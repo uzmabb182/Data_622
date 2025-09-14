@@ -2,6 +2,22 @@
 title: "Test HW"
 author: "Mubashira Qari"
 date: "2025-09-03"
-output: html_document
+output: html_document:
+  toc: true
+  toc_float: true
+  number_sections: true
 ---
+
+# Word Processing
+You can format text in **bold** or *italic*.
+
+```{r}
+exp(1)
+```
+
+```{r}
+library(plotly)
+data("volcano")
+plot_ly(z = volcano, type = "surface")
+```
 
