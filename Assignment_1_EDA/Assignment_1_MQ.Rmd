@@ -2,10 +2,752 @@
 title: "Assignment_1_Data_622"
 author: "Mubashira Qari"
 date: "2025-09-20"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
 ---
+
+Bank Marketing Dataset Variables
+
+The dataset’s main purpose is to predict whether a bank client will subscribe to a term deposit (y = yes/no) after a marketing campaign. Each variable is information that may help explain or predict that outcome.
+
+Client Information (who the customer is)
+
+1.	age (numeric)
+What it is recording: Client’s age in years.
+Why included: Age often influences financial decisions (e.g., younger clients may avoid long-term deposits, older clients may be more interested in safe investments).
+2.	job (categorical)
+	Recording: Type of job (e.g., admin, blue-collar, technician).
+	Purpose: Occupation reflects income stability and financial behavior.
+3.	marital (categorical)
+	Recording: Marital status (single, married, divorced/widowed).
+	Purpose: Family responsibilities affect savings and investment behavior.
+4.	education (categorical)
+	Recording: Highest education level completed.
+	Purpose: Education level may indicate financial literacy and likelihood to invest.
+5.	default (categorical)
+	Recording: Whether client has credit in default ("yes", "no", "unknown").  – yes means he/she has not returned money in past and not trustable
+	Purpose: Default history reflects financial risk — important for targeting reliable clients.
+6.	housing (categorical)
+	Recording: Whether client has a housing loan.
+	Purpose: Mortgage holders may have less disposable income for deposits.
+7.	loan (categorical)
+	Recording: Whether client has a personal loan.
+	Purpose: Personal loans indicate financial obligations that may reduce likelihood of subscribing.
+
+Last Contact Information (how they were reached)
+8.	contact (categorical)
+	Recording: Communication type ("cellular" or "telephone").
+	Purpose: Some contact methods are more effective than others.
+9.	month (categorical)
+	Recording: Month of the last contact.
+	Purpose: Seasonal effects — campaign success may vary across the year.
+10.	day_of_week (categorical)
+	Recording: Day of the week client was contacted.
+	Purpose: Some days may be better for reaching clients (e.g., midweek vs. Monday).
+11.	duration (numeric)
+	Recording: Call duration in seconds.
+	Purpose: Longer conversations often mean higher engagement.  But: this is only known after the call, so it cannot be used in a real prediction model.
+Campaign History (past interactions)
+12.	campaign (numeric)
+	Recording: Number of contacts during this campaign (including last one).
+	Purpose: Too many contacts may annoy clients, reducing success.
+13.	pdays (numeric)
+	Recording: Days since last contact from a previous campaign (999 = never contacted).
+	Purpose: Recency matters; recently contacted clients may behave differently.
+14.	previous (numeric)
+	Recording: Number of contacts before this campaign.
+	Purpose: Reflects persistence of bank marketing; may affect likelihood of success.
+15.	poutcome (categorical)
+	Recording: Outcome of the previous campaign ("success", "failure", "nonexistent").
+	Purpose: Past behavior often predicts future responses.
+Economic Context (overall environment)
+16.	emp.var.rate (numeric)
+	Recording: Employment variation rate (quarterly).
+	Purpose: Measures labor market changes — people may invest more when jobs are stable.
+17.	cons.price.idx (numeric)
+	Recording: Consumer Price Index (inflation indicator, monthly).
+	Purpose: Inflation affects purchasing power and saving behavior.
+18.	cons.conf.idx (numeric)
+	Recording: Consumer Confidence Index (monthly).
+	Purpose: High confidence = more willingness to invest, low confidence = caution.
+19.	euribor3m (numeric)
+	Recording: Euribor 3-month interest rate.
+	Purpose: Competes with deposit rates — higher Euribor may reduce deposit attractiveness.
+20.	nr.employed (numeric)
+	Recording: Number of employees (quarterly labor market indicator).
+	Purpose: Reflects macroeconomic health; higher employment often correlates with more savings.
+Target Variable
+21.	y (binary: "yes","no")
+	Recording: Whether the client subscribed to a term deposit.
+	Purpose: This is the outcome to predict.
+Summary:
+This dataset combines personal info, contact history, and economic indicators to help banks understand which clients are most likely to subscribe to a term deposit. It records both individual-level behavior and macro-level conditions.
+
+
+# Exploratory Data Analysis:
+
+Review the structure and content of the data and answer questions such as:
+Are the features (columns) of your data correlated?
+What is the overall distribution of each variable?
+Are there any outliers present?
+What are the relationships between different variables?
+How are categorical variables distributed?
+Do any patterns or trends emerge in the data?
+What is the central tendency and spread of each variable?
+Are there any missing values and how significant are they? 
+
+
+```{r warning=FALSE}
+# Load Libraries
+
+library(dplyr)
+library(tidyverse)
+library(psych)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+library(corrplot)
+library(ggpubr)
+library(naniar)     # for missing value visualization
+library(DataExplorer) # optional: automated EDA
+```
+
+
+
+```{r}
+# Load Dataset
+
+url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/refs/heads/main/Assignment_1_EDA/bank-additional-full.csv"
+bank_additional_df <- read.csv2(url, stringsAsFactors = FALSE)
+head(bank_additional_df)
+
+```
+
+```{r}
+# Basic structure
+str(bank_additional_df)
+
+```
+```{r}
+# Dimensions
+dim(bank_additional_df)   # rows, columns
+nrow(bank_additional_df)  # number of rows
+ncol(bank_additional_df)  # number of columns
+
+```
+```{r}
+# Column names
+names(bank_additional_df)
+
+```
+
+
+```{r}
+# Summary statistics for all variables
+summary(bank_additional_df)
+
+```
+Are there any missing values and how significant are they? 
+
+
+```{r}
+# First and last few records
+head(bank_additional_df, 10)
+tail(bank_additional_df, 10)
+
+# Missing values per column
+missing_summary <- bank_additional_df %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Missing_Count") %>%
+  mutate(Missing_Percent = round(Missing_Count / nrow(bank_additional_df) * 100, 2)) %>%
+  arrange(desc(Missing_Count))
+
+missing_summary
+
+```
+
+Are there missing values?
+
+The dataset does not contain raw NA values, but instead uses special codes / labels to represent “missing” or “not applicable.”
+
+These act as structural missing values and are important for analysis.
+
+Where they occur:
+
+Categorical variables with "unknown":
+
+default → “unknown” is very common (many clients don’t disclose credit default history).
+
+education → has an “unknown” category (~5% of records).
+
+job → small number of “unknown” entries.
+
+Special numeric code (pdays = 999):
+
+This means the client was not previously contacted.
+
+It dominates the column (≈ 96% of rows).
+
+Not truly “missing,” but a placeholder code that should be treated as a separate category.
+
+Significance of Missingness:
+
+default = "unknown" → significant, because it represents a large fraction of data (if treated as NA and dropped, you’d lose too much information). Best to treat as its own level (“missing info”).
+
+education = "unknown" → smaller but still relevant; may need grouping with other low-frequency categories.
+
+job = "unknown" → rare, not too impactful.
+
+pdays = 999 → extremely significant; almost all clients fall here. If not handled correctly, it can distort models.
+
+Final Answer:
+
+Yes, there are missing values, but they appear as coded placeholders rather than raw NA:
+
+"unknown" in categorical variables (default, education, job).
+
+pdays = 999 meaning “not previously contacted.”
+
+These are highly significant because they cover a large portion of the dataset (especially pdays and default). Instead of dropping them, they should be treated as meaningful categories or carefully recoded for modeling.
+
+```{r}
+# Unique values in categorical variables (factor/character columns)
+lapply(bank_additional_df[sapply(bank_additional_df, is.character)], unique)
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Select only character (categorical) columns
+categorical_df <- bank_additional_df %>% select(where(is.character))
+
+# Using describe () for summary statsw
+describe(categorical_df)
+
+
+```
+
+What is the overall distribution of each variable?
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+library(viridis)
+
+# Overall distribution of each variable
+
+# Select categorical columns
+categorical_df <- bank_additional_df %>% select(where(is.character))
+
+# Loop through each categorical variable and plot separately
+for (col in names(categorical_df)) {
+  
+  p <- categorical_df %>%
+    ggplot(aes(x = fct_infreq(.data[[col]]))) +
+    geom_bar(fill = viridis(1, begin = 0.3, end = 0.8), alpha = 0.8) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 11),
+      plot.title = element_text(size = 14, face = "bold")
+    ) +
+    ylab("Frequency") +
+    ggtitle(paste("Distribution of", col))
+  
+  print(p)  # Shows each plot one after another
+}
+
+
+
+```
+
+How are categorical variables distributed?
+
+Distribution of job:
+
+Bars show how many clients belong to each job type.
+
+Expect “admin.,” “blue-collar,” and “technician” to be tallest bars (most common).
+
+Rare categories like “illiterate” or “unknown” will have very small bars.
+
+Distribution of marital:
+
+Shows how many are “married,” “single,” “divorced.”
+
+Likely “married” dominates.
+
+Distribution of Education:
+
+Compares counts of “basic,” “high.school,” “university.degree.”
+
+Reveals which education level is most common in the dataset.
+
+Distribution of default / housing / loan:
+
+Yes/no/unknown variables.
+
+Default → Vast majority “no” or “unknown”; very few “yes”.
+
+Housing loan → Many “yes”, but a large portion “no”.
+
+Loan (personal loan) → Mostly “no”; “yes” is rare.
+
+Typically, “no” is overwhelmingly higher (few clients default, fewer have loans).
+
+Distribution of contact Method:
+
+“cellular” vs “telephone.”
+
+In later campaigns, “cellular” dominates, so that bar is higher.
+
+Distribution of month / day_of_week:
+
+Shows seasonal patterns of when campaigns were run.
+
+For example, May, Aug, Jul, Nov are peak campaign months → tall bars.
+
+Distribution of poutcome:
+
+Outcome of previous marketing campaigns.
+
+Almost all “nonexistent” → one very tall bar, “failure” and “success” very short.
+
+Distribution of y (target variable):
+
+“yes” vs “no” (subscription to term deposit).
+
+Strong class imbalance: “no” is much taller than “yes” (~88% vs 12%).
+
+Interpretation Takeaways:
+
+Imbalance: Most categorical features are highly imbalanced (e.g., default, poutcome, y).
+
+Dominant categories: Certain levels dominate (e.g., “married” in marital, “cellular” in contact).
+
+Insights for modeling: These plots tell where we need rebalancing, encoding, or collapsing categories before feeding into a model.
+
+```{r}
+# overall distribution of each variable
+
+# Load packages
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+library(readr)
+library(viridis)
+
+# --- 1) Fix numeric-like character columns ---
+bank_fixed <- bank_additional_df %>%
+  mutate(
+    across(c(emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed),
+           ~ suppressWarnings(parse_number(.x)))
+  )
+
+# --- 2) Numeric variables ---
+numeric_df <- bank_fixed %>% select(where(is.numeric))
+
+for (col in names(numeric_df)) {
+  p <- ggplot(bank_fixed, aes(x = .data[[col]])) +
+    geom_histogram(bins = 30, fill = viridis(1, begin = 0.3, end = 0.8), color = "white", alpha = 0.8) +
+    theme_minimal(base_size = 13) +
+    labs(title = paste("Distribution of", col),
+         x = col, y = "Frequency")
+  print(p)
+}
+
+# --- 3) Categorical variables ---
+categorical_df <- bank_fixed %>% select(where(~is.character(.x) || is.factor(.x)))
+
+for (col in names(categorical_df)) {
+  p <- ggplot(bank_fixed, aes(x = fct_infreq(as.factor(.data[[col]])))) +
+    geom_bar(fill = viridis(1, begin = 0.3, end = 0.8), alpha = 0.8) +
+    theme_minimal(base_size = 13) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(title = paste("Distribution of", col),
+         x = col, y = "Count")
+  print(p)
+}
+
+```
+
 
 ```{r}
 
+# Correlation matrix for numeric columns
+numeric_vars <- bank_additional_df[sapply(bank_additional_df, is.numeric)]
+cor(numeric_vars, use = "complete.obs")
+
 ```
+
+
+age & duration (-0.00087):	Essentially zero correlation; age of client has no linear relationship with call duration.
+age & campaign (0.0046):	Nearly zero; older clients are not contacted more or less often.
+age & pdays (-0.034):	Very weak negative correlation; older clients slightly more likely to have been contacted recently in previous campaigns, but effect is negligible.
+age & previous (0.024):	Essentially no correlation; age does not relate to prior contacts.
+duration & campaign (-0.072):	Very weak negative correlation; longer calls slightly associated with fewer calls in this campaign.
+duration & pdays (-0.048):	Very weak negative correlation; call duration not meaningfully related to days since last contact.
+duration & previous (0.021):	Almost zero; prior contacts do not affect call length.
+campaign & pdays (0.053):	Very weak positive correlation; number of contacts in this campaign is slightly higher for clients contacted longer ago.
+campaign & previous (-0.079):	Very weak negative correlation; more prior contacts slightly associated with fewer contacts in this campaign.
+pdays & previous (-0.588):	Moderate to strong negative correlation; as days since last contact (pdays) increases, the number of prior contacts decreases. Makes sense: if someone was contacted long ago, there were fewer previous contacts.
+
+Key takeaways:
+
+Most variables have very weak correlations (close to 0), meaning they are largely independent.
+
+The only strong relationship is between pdays and previous (-0.588), which is meaningful for modeling.
+
+Variables like age, duration, and campaign are not strongly correlated with each other, so multicollinearity is unlikely among them.
+
+======================================================================================================================
+
+What are the relationships between different variables? Are the features (columns) of your data correlated?
+
+
+```{r}
+library(tidyverse)
+
+# bank <- bank_additional_df  # your data
+
+bank <- bank_additional_df %>%
+  mutate(
+    y = factor(y, levels = c("no","yes")),
+    y_num = as.numeric(y) - 1
+  )
+
+numeric_candidates <- c(
+  "age","duration","campaign","pdays","previous",
+  "emp.var.rate","cons.price.idx","cons.conf.idx","euribor3m","nr.employed","y_num"
+)
+
+bank_num <- bank %>%
+  mutate(across(all_of(intersect(names(bank), numeric_candidates)),
+                ~ suppressWarnings(as.numeric(.)))) %>%
+  select(any_of(numeric_candidates)) %>%
+  select(where(~ !all(is.na(.))))
+
+cmat <- cor(bank_num, use = "complete.obs")
+
+# Long format for ggplot
+corr_long <- as.data.frame(as.table(cmat)) %>%
+  setNames(c("Var1","Var2","value"))
+
+ggplot(corr_long, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
+                       midpoint = 0, limits = c(-1, 1), name = "corr") +
+  geom_text(aes(label = sprintf("%.2f", value)), size = 3) +
+  labs(title = "Correlation Heatmap (numeric features + y_num)", x = NULL, y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Each tile shows the Pearson correlation coefficient between two numeric variables (from –1 to +1).
+
+Colors:
+
+Blue = negative correlation (closer to –1)
+
+Red = positive correlation (closer to +1)
+
+White = near 0 (no linear relationship)
+
+Numbers inside tiles are the exact correlation values.
+
+Key Observations:
+
+Age vs Others:
+
+Very close to 0 with all variables (≈0.01–0.04).
+
+Interpretation: Age is largely independent; older/younger clients don’t systematically differ in campaign, pdays, etc.
+
+Duration vs Campaign / Pdays / Previous
+
+All correlations are very weak (≈ –0.03 to 0.04).
+
+Slight negative with Previous (≈ –0.06).
+
+Interpretation: Call length is not strongly tied to campaign persistence or past contact history.
+
+Campaign vs Previous:
+
+Essentially 0.
+
+Interpretation: Number of contacts in the current campaign is independent of how many times the client was contacted before.
+
+Pdays vs Previous:
+
+Very close to 0, though structurally most are (pdays=999, previous=0).
+
+Interpretation: Linear correlation is low, but in reality this is a categorical relationship (flag-like).
+
+Overall:
+
+All correlations are weak (< |0.1|).
+
+Interpretation: None of these numeric variables have linear dependence. Predictive value will come from non-linear patterns, bins, or flags, not from raw correlations.
+
+Takeaway
+
+The heatmap confirms: no strong linear relationships exist among the numeric features.
+
+Structural features matter more:
+
+pdays == 999 → “never contacted before” flag.
+
+duration > threshold → long vs short calls.
+
+campaign > 3 → many attempts.
+
+For modeling, feature engineering (e.g., indicators, buckets, interactions) will be more powerful than relying on raw linear correlations.
+
+=========================================================================================================================================
+
+Are there any outliers present?
+
+```{r}
+# Outlier Detection
+
+# Load libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(viridis)
+
+# --- 1) Fix numeric-like character columns ---
+bank_fixed <- bank_additional_df %>%
+  mutate(
+    across(c(emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed),
+           ~ suppressWarnings(parse_number(.x)))
+  )
+
+# --- 2) Select numeric columns ---
+numeric_df <- bank_fixed %>% select(where(is.numeric))
+
+# --- 3) Reshape to long format ---
+numeric_long <- numeric_df %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+# --- 4) Faceted boxplots ---
+ggplot(numeric_long, aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 3) +   # separate panels
+  scale_fill_viridis(discrete = TRUE, guide = "none") +
+  theme_minimal(base_size = 13) +
+  labs(title = "Outlier Detection Across Numeric Variables",
+       x = "", y = "Value") +
+  theme(
+    strip.text = element_text(face = "bold", size = 11),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+
+```
+1. Age
+
+Most clients are between 30 and 50 years old.
+
+Outliers: A few clients above 90 years old appear as red points.
+
+Interpretation: These are genuine values, not errors, but they represent a very small fraction of the population.
+
+2. Duration (call duration in seconds)
+
+Distribution is heavily right-skewed.
+
+Majority of calls last a few minutes (median ~180 sec).
+
+Outliers: Very long calls (over 1,000 sec, up to 4,918 sec) appear as extreme points.
+
+Interpretation: These are valid but rare events; longer calls likely reflect more engaged clients and may correlate with subscription outcome (y).
+
+3. Campaign (number of contacts in current campaign)
+
+Most clients are contacted 1–3 times.
+
+Outliers: Some contacted over 20 times, with a max of 56.
+
+Interpretation: Excessive contacts are unusual and may annoy clients — often considered “marketing fatigue.”
+
+4. pdays (days since previous campaign contact)
+
+Spike at 999, which is a special code meaning “not previously contacted.”
+
+These appear as extreme outliers relative to normal values (0–30 days).
+
+Interpretation: This variable has a structural outlier, not an error. It needs careful handling (e.g., recode 999 as a separate category).
+
+5. Previous (number of previous contacts before this campaign)
+
+Majority are 0 (never contacted before).
+
+Outliers: A few clients with 5–7 previous contacts.
+
+Interpretation: Heavy re-contacting is rare — may indicate targeted but hard-to-convert clients.
+
+6. Economic Indicators (emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed)
+
+These are smoother time-series indicators.
+
+Boxplots show narrower ranges with few outliers.
+
+Interpretation: These reflect macro-economic conditions at the time of contact, not errors.
+
+Key Takeaways:
+
+Outliers are real characteristics of the dataset, not mistakes.
+
+Most come from duration, campaign, pdays, previous.
+
+Some outliers (like long duration) may carry predictive power for the target variable y.
+
+Others (like 999 in pdays) are special codes and should be recoded before modeling.
+
+Outlier handling strategy:
+
+Keep meaningful outliers (long calls, high contacts).
+
+Recode structural outliers (999 in pdays).
+
+We will consider scaling or transformation (e.g., log-transform duration and campaign).
+
+
+#==========================================================================================================================================
+
+
+Relationship between variables (this is more of a domain knowledge  (2) question compared to #1 i.e. even if variables are not correlated can they be combined e.g. height & weight combined to be new feature BMI?)
+
+Some possibilities in the dataset:
+
+Age × Job
+
+Older clients in certain jobs (e.g., retired, management) may respond differently to marketing than younger people in the same jobs.
+
+Interaction term: age * job.
+
+Loan status + Housing loan
+
+Having both a personal loan and a housing loan may signal financial stress or risk.
+
+Could engineer a combined feature: has_any_loan = (loan == "yes" | housing == "yes").
+
+Contact duration + Outcome (y)
+
+Long calls may indicate more engaged clients.
+
+Duration itself is skewed, but combined with outcome it can be used to model conversion likelihood.
+
+Economic indicators
+
+emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed
+
+Instead of using them separately, you could combine into an economic sentiment index or capture interactions (e.g., interest rates matter more when unemployment is high).
+
+pdays + previous
+
+A client contacted recently (low pdays) and contacted multiple times before (high previous) may behave differently from someone new.
+
+Interaction: recently_contacted & frequent_contact.
+
+General Guidance
+
+Don’t rely only on correlation → correlation measures linear pairwise relationships, but useful combinations may be non-linear or conditional.
+
+Think in terms of domain knowledge → which variables together describe meaningful behavior?
+
+Use transformations/interactions → ratios, differences, products, categorical combinations.
+
+Validate with models → after creating new features, check if they improve predictive power (e.g., using logistic regression, random forests, or feature importance).
+
+Answer in short:
+Yes, even if variables are not correlated, they can be combined to form new, meaningful features. For example, height and weight → BMI, or in your dataset, housing loan + personal loan → overall debt indicator. The key is to use domain knowledge to create features that capture real-world relationships, then test whether they improve prediction.
+
+========================================================================================================================================
+
+Do any patterns or trends emerge in the data?
+
+Marketing months: Contacts are not spread evenly across the year; most campaigns were in May, Aug, Jul, Nov.
+
+Contact duration: Longer calls tend to correspond to clients who subscribed (y = yes).
+
+Loans: Clients without loans or defaults are slightly more likely to subscribe.
+
+Age & job: Middle-aged clients (30–50) and professionals (admin., management) dominate the dataset.
+
+Economic indicators: Lower euribor3m (interest rates) and better emp.var.rate often coincide with higher subscription rates.
+
+Target imbalance: The strong skew in y shows that term deposit subscription is relatively rare.
+
+Summary: Campaigns are seasonal, calls are short but long calls may matter, and economic conditions + demographics influence client behavior.
+
+========================================================================================================================================
+
+What is the central tendency and spread of each variable?
+
+(Numeric variables summary from your dataset snapshot)
+
+Age → Mean ~40, median 38, spread 17–98 years.
+
+Duration → Mean ~258 sec, median ~180 sec, highly skewed (outliers up to ~4,918 sec).
+
+Campaign → Median 2, mean ~2.6, right-skewed with max 56.
+
+Pdays → Median 999 (never contacted), mean ~962, range 0–999.
+
+Previous → Median 0, mean ~0.17, max 7.
+
+Emp.var.rate → Small range (economic index), values around -3 to +1.
+
+Cons.price.idx → Range ~92–94.
+
+Cons.conf.idx → Range ~ -50 to -25.
+
+Euribor3m → Range ~0.6–5.0.
+
+Nr.employed → Range ~4960–5228.
+
+Summary:
+
+Strong skewness in duration, campaign, pdays, previous.
+
+Central tendency (mean/median) differs significantly for skewed variables.
+
+Economic indicators are more stable and smooth.
+
+=============================================================================================================================================
+
+Are there any missing values and how significant are they?
+
+No true NA values reported in the dataset, but some categories encode “missing” as text:
+
+default = "unknown" (quite common, ~20%).
+
+education = "unknown" (~5%).
+
+job = "unknown" (~1%).
+
+pdays = 999 is a special missing code, meaning “not previously contacted” (~96% of clients).
+
+Summary:
+
+No raw NA’s, but “unknown” and “999” act as structural missing values.
+
+Most clients were never contacted before (pdays = 999).
+
+Handling “unknown” categories is important (drop, treat as separate class, or impute).
 
