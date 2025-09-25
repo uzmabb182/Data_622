@@ -1,7 +1,7 @@
 ---
-title: "Assignment_1_Data_622"
+title: "Assignment1_Data622"
 author: "Mubashira Qari"
-date: "2025-09-20"
+date: "2025-09-15"
 output: 
   html_document:
     toc: true
@@ -9,95 +9,119 @@ output:
     number_sections: true
 ---
 
-Bank Marketing Dataset Variables
+# Bank Marketing Dataset Variables  
 
-The dataset’s main purpose is to predict whether a bank client will subscribe to a term deposit (y = yes/no) after a marketing campaign. Each variable is information that may help explain or predict that outcome.
+The dataset’s main purpose is to predict whether a bank client will subscribe to a term deposit (`y = yes/no`) after a marketing campaign. Each variable provides information that may help explain or predict that outcome.  
 
-Client Information (who the customer is)
+---
 
-1.	age (numeric)
-What it is recording: Client’s age in years.
-Why included: Age often influences financial decisions (e.g., younger clients may avoid long-term deposits, older clients may be more interested in safe investments).
-2.	job (categorical)
-	Recording: Type of job (e.g., admin, blue-collar, technician).
-	Purpose: Occupation reflects income stability and financial behavior.
-3.	marital (categorical)
-	Recording: Marital status (single, married, divorced/widowed).
-	Purpose: Family responsibilities affect savings and investment behavior.
-4.	education (categorical)
-	Recording: Highest education level completed.
-	Purpose: Education level may indicate financial literacy and likelihood to invest.
-5.	default (categorical)
-	Recording: Whether client has credit in default ("yes", "no", "unknown").  – yes means he/she has not returned money in past and not trustable
-	Purpose: Default history reflects financial risk — important for targeting reliable clients.
-6.	housing (categorical)
-	Recording: Whether client has a housing loan.
-	Purpose: Mortgage holders may have less disposable income for deposits.
-7.	loan (categorical)
-	Recording: Whether client has a personal loan.
-	Purpose: Personal loans indicate financial obligations that may reduce likelihood of subscribing.
+## Client Information (Who the Customer Is)  
 
-Last Contact Information (how they were reached)
-8.	contact (categorical)
-	Recording: Communication type ("cellular" or "telephone").
-	Purpose: Some contact methods are more effective than others.
-9.	month (categorical)
-	Recording: Month of the last contact.
-	Purpose: Seasonal effects — campaign success may vary across the year.
-10.	day_of_week (categorical)
-	Recording: Day of the week client was contacted.
-	Purpose: Some days may be better for reaching clients (e.g., midweek vs. Monday).
-11.	duration (numeric)
-	Recording: Call duration in seconds.
-	Purpose: Longer conversations often mean higher engagement.  But: this is only known after the call, so it cannot be used in a real prediction model.
-Campaign History (past interactions)
-12.	campaign (numeric)
-	Recording: Number of contacts during this campaign (including last one).
-	Purpose: Too many contacts may annoy clients, reducing success.
-13.	pdays (numeric)
-	Recording: Days since last contact from a previous campaign (999 = never contacted).
-	Purpose: Recency matters; recently contacted clients may behave differently.
-14.	previous (numeric)
-	Recording: Number of contacts before this campaign.
-	Purpose: Reflects persistence of bank marketing; may affect likelihood of success.
-15.	poutcome (categorical)
-	Recording: Outcome of the previous campaign ("success", "failure", "nonexistent").
-	Purpose: Past behavior often predicts future responses.
-Economic Context (overall environment)
-16.	emp.var.rate (numeric)
-	Recording: Employment variation rate (quarterly).
-	Purpose: Measures labor market changes — people may invest more when jobs are stable.
-17.	cons.price.idx (numeric)
-	Recording: Consumer Price Index (inflation indicator, monthly).
-	Purpose: Inflation affects purchasing power and saving behavior.
-18.	cons.conf.idx (numeric)
-	Recording: Consumer Confidence Index (monthly).
-	Purpose: High confidence = more willingness to invest, low confidence = caution.
-19.	euribor3m (numeric)
-	Recording: Euribor 3-month interest rate.
-	Purpose: Competes with deposit rates — higher Euribor may reduce deposit attractiveness.
-20.	nr.employed (numeric)
-	Recording: Number of employees (quarterly labor market indicator).
-	Purpose: Reflects macroeconomic health; higher employment often correlates with more savings.
-Target Variable
-21.	y (binary: "yes","no")
-	Recording: Whether the client subscribed to a term deposit.
-	Purpose: This is the outcome to predict.
-Summary:
-This dataset combines personal info, contact history, and economic indicators to help banks understand which clients are most likely to subscribe to a term deposit. It records both individual-level behavior and macro-level conditions.
+- **age (numeric)**  
+  - *Recording:* Client’s age in years.  
+  - *Purpose:* Age often influences financial decisions (e.g., younger clients may avoid long-term deposits, older clients may be more interested in safe investments).  
 
+- **job (categorical)**  
+  - *Recording:* Type of job (e.g., admin, blue-collar, technician).  
+  - *Purpose:* Occupation reflects income stability and financial behavior.  
 
-# Exploratory Data Analysis:
+- **marital (categorical)**  
+  - *Recording:* Marital status (single, married, divorced/widowed).  
+  - *Purpose:* Family responsibilities affect savings and investment behavior.  
 
-Review the structure and content of the data and answer questions such as:
-Are the features (columns) of your data correlated?
-What is the overall distribution of each variable?
-Are there any outliers present?
-What are the relationships between different variables?
-How are categorical variables distributed?
-Do any patterns or trends emerge in the data?
-What is the central tendency and spread of each variable?
-Are there any missing values and how significant are they? 
+- **education (categorical)**  
+  - *Recording:* Highest education level completed.  
+  - *Purpose:* Education level may indicate financial literacy and likelihood to invest.  
+
+- **default (categorical)**  
+  - *Recording:* Whether client has credit in default ("yes", "no", "unknown").  
+  - *Purpose:* Default history reflects financial risk and trustworthiness.  
+
+- **housing (categorical)**  
+  - *Recording:* Whether client has a housing loan.  
+  - *Purpose:* Mortgage holders may have less disposable income for deposits.  
+
+- **loan (categorical)**  
+  - *Recording:* Whether client has a personal loan.  
+  - *Purpose:* Personal loans indicate financial obligations that may reduce likelihood of subscribing.  
+
+---
+
+## Last Contact Information (How They Were Reached)  
+
+- **contact (categorical)**  
+  - *Recording:* Communication type ("cellular" or "telephone").  
+  - *Purpose:* Some contact methods are more effective than others.  
+
+- **month (categorical)**  
+  - *Recording:* Month of the last contact.  
+  - *Purpose:* Seasonal effects — campaign success may vary across the year.  
+
+- **day_of_week (categorical)**  
+  - *Recording:* Day of the week client was contacted.  
+  - *Purpose:* Some days may be better for reaching clients (e.g., midweek vs. Monday).  
+
+- **duration (numeric)**  
+  - *Recording:* Call duration in seconds.  
+  - *Purpose:* Longer conversations often mean higher engagement.  
+  - *Note:* Duration is only known after the call, so it cannot be used in real prediction models.  
+
+---
+
+## Campaign History (Past Interactions)  
+
+- **campaign (numeric)**  
+  - *Recording:* Number of contacts during this campaign (including the last one).  
+  - *Purpose:* Too many contacts may annoy clients, reducing success.  
+
+- **pdays (numeric)**  
+  - *Recording:* Days since last contact from a previous campaign (999 = never contacted).  
+  - *Purpose:* Recency matters; recently contacted clients may behave differently.  
+
+- **previous (numeric)**  
+  - *Recording:* Number of contacts before this campaign.  
+  - *Purpose:* Reflects persistence of bank marketing; may affect likelihood of success.  
+
+- **poutcome (categorical)**  
+  - *Recording:* Outcome of the previous campaign ("success", "failure", "nonexistent").  
+  - *Purpose:* Past behavior often predicts future responses.  
+
+---
+
+## Economic Context (Overall Environment)  
+
+- **emp.var.rate (numeric)**  
+  - *Recording:* Employment variation rate (quarterly).  
+  - *Purpose:* Measures labor market changes — people may invest more when jobs are stable.  
+
+- **cons.price.idx (numeric)**  
+  - *Recording:* Consumer Price Index (monthly).  
+  - *Purpose:* Inflation affects purchasing power and saving behavior.  
+
+- **cons.conf.idx (numeric)**  
+  - *Recording:* Consumer Confidence Index (monthly).  
+  - *Purpose:* High confidence = more willingness to invest, low confidence = caution.  
+
+- **euribor3m (numeric)**  
+  - *Recording:* Euribor 3-month interest rate.  
+  - *Purpose:* Competes with deposit rates — higher Euribor may reduce deposit attractiveness.  
+
+- **nr.employed (numeric)**  
+  - *Recording:* Number of employees (quarterly labor market indicator).  
+  - *Purpose:* Reflects macroeconomic health; higher employment often correlates with more savings.  
+
+---
+
+## Target Variable  
+
+- **y (binary: "yes" / "no")**  
+  - *Recording:* Whether the client subscribed to a term deposit.  
+  - *Purpose:* This is the outcome to predict.  
+
+---
+
+## PART I: Exploratory Data Analysis (EDA) {.tabset}
+
 
 
 ```{r warning=FALSE}
@@ -113,6 +137,13 @@ library(corrplot)
 library(ggpubr)
 library(naniar)     # for missing value visualization
 library(DataExplorer) # optional: automated EDA
+library(forcats)
+library(caret)
+library(recipes)
+library(themis)
+library(smotefamily)
+
+
 ```
 
 
@@ -169,49 +200,44 @@ missing_summary
 
 ```
 
-Are there missing values?
+## Are There Missing Values?  
 
-The dataset does not contain raw NA values, but instead uses special codes / labels to represent “missing” or “not applicable.”
+The dataset does not contain raw `NA` values, but instead uses **special codes or labels** to represent “missing” or “not applicable.” These are **structural missing values** and must be considered carefully during analysis.  
 
-These act as structural missing values and are important for analysis.
+---
 
-Where they occur:
+### Where They Occur  
 
-Categorical variables with "unknown":
+- **Categorical variables with `"unknown"`**  
+  - *default:* `"unknown"` is very common (many clients do not disclose credit default history).  
+  - *education:* includes an `"unknown"` category (~5% of records).  
+  - *job:* contains a small number of `"unknown"` entries.  
 
-default → “unknown” is very common (many clients don’t disclose credit default history).
+- **Special numeric code – `pdays = 999`**  
+  - Indicates the client was **not previously contacted**.  
+  - Dominates the column (~96% of rows).  
+  - Not truly “missing,” but a **placeholder code** that should be treated as its own category.  
 
-education → has an “unknown” category (~5% of records).
+---
 
-job → small number of “unknown” entries.
+### Significance of Missingness  
 
-Special numeric code (pdays = 999):
+- **default = "unknown":** Very significant because it covers a large fraction of the data. Dropping it would result in too much information loss, so it should be treated as its own level (“missing info”).  
+- **education = "unknown":** Smaller but still relevant; may need grouping with other low-frequency categories.  
+- **job = "unknown":** Rare and not very impactful, but still worth encoding properly.  
+- **pdays = 999:** Extremely significant since it applies to almost all clients. If not handled correctly, it can distort model training.  
 
-This means the client was not previously contacted.
+---
 
-It dominates the column (≈ 96% of rows).
+### Final Answer  
 
-Not truly “missing,” but a placeholder code that should be treated as a separate category.
+Yes, there are missing values, but they appear as **coded placeholders** rather than raw `NA`:  
 
-Significance of Missingness:
+- `"unknown"` in categorical variables (*default, education, job*).  
+- `pdays = 999` meaning “not previously contacted.”  
 
-default = "unknown" → significant, because it represents a large fraction of data (if treated as NA and dropped, you’d lose too much information). Best to treat as its own level (“missing info”).
+These placeholders are highly significant because they cover a large portion of the dataset (especially *pdays* and *default*). Instead of dropping them, they should be **treated as meaningful categories or carefully recoded** for modeling.  
 
-education = "unknown" → smaller but still relevant; may need grouping with other low-frequency categories.
-
-job = "unknown" → rare, not too impactful.
-
-pdays = 999 → extremely significant; almost all clients fall here. If not handled correctly, it can distort models.
-
-Final Answer:
-
-Yes, there are missing values, but they appear as coded placeholders rather than raw NA:
-
-"unknown" in categorical variables (default, education, job).
-
-pdays = 999 meaning “not previously contacted.”
-
-These are highly significant because they cover a large portion of the dataset (especially pdays and default). Instead of dropping them, they should be treated as meaningful categories or carefully recoded for modeling.
 
 ```{r}
 # Unique values in categorical variables (factor/character columns)
@@ -242,14 +268,12 @@ library(ggplot2)
 library(forcats)
 library(viridis)
 
-# Overall distribution of each variable
-
-# Select categorical columns
+# Separate categorical and numeric columns
 categorical_df <- bank_additional_df %>% select(where(is.character))
+numeric_df <- bank_additional_df %>% select(where(is.numeric))
 
-# Loop through each categorical variable and plot separately
+# Plot categorical variables
 for (col in names(categorical_df)) {
-  
   p <- categorical_df %>%
     ggplot(aes(x = fct_infreq(.data[[col]]))) +
     geom_bar(fill = viridis(1, begin = 0.3, end = 0.8), alpha = 0.8) +
@@ -263,123 +287,92 @@ for (col in names(categorical_df)) {
     ylab("Frequency") +
     ggtitle(paste("Distribution of", col))
   
-  print(p)  # Shows each plot one after another
+  print(p)
 }
 
-
-
-```
-
-How are categorical variables distributed?
-
-Distribution of job:
-
-Bars show how many clients belong to each job type.
-
-Expect “admin.,” “blue-collar,” and “technician” to be tallest bars (most common).
-
-Rare categories like “illiterate” or “unknown” will have very small bars.
-
-Distribution of marital:
-
-Shows how many are “married,” “single,” “divorced.”
-
-Likely “married” dominates.
-
-Distribution of Education:
-
-Compares counts of “basic,” “high.school,” “university.degree.”
-
-Reveals which education level is most common in the dataset.
-
-Distribution of default / housing / loan:
-
-Yes/no/unknown variables.
-
-Default → Vast majority “no” or “unknown”; very few “yes”.
-
-Housing loan → Many “yes”, but a large portion “no”.
-
-Loan (personal loan) → Mostly “no”; “yes” is rare.
-
-Typically, “no” is overwhelmingly higher (few clients default, fewer have loans).
-
-Distribution of contact Method:
-
-“cellular” vs “telephone.”
-
-In later campaigns, “cellular” dominates, so that bar is higher.
-
-Distribution of month / day_of_week:
-
-Shows seasonal patterns of when campaigns were run.
-
-For example, May, Aug, Jul, Nov are peak campaign months → tall bars.
-
-Distribution of poutcome:
-
-Outcome of previous marketing campaigns.
-
-Almost all “nonexistent” → one very tall bar, “failure” and “success” very short.
-
-Distribution of y (target variable):
-
-“yes” vs “no” (subscription to term deposit).
-
-Strong class imbalance: “no” is much taller than “yes” (~88% vs 12%).
-
-Interpretation Takeaways:
-
-Imbalance: Most categorical features are highly imbalanced (e.g., default, poutcome, y).
-
-Dominant categories: Certain levels dominate (e.g., “married” in marital, “cellular” in contact).
-
-Insights for modeling: These plots tell where we need rebalancing, encoding, or collapsing categories before feeding into a model.
-
-```{r}
-# overall distribution of each variable
-
-# Load packages
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(forcats)
-library(readr)
-library(viridis)
-
-# --- 1) Fix numeric-like character columns ---
-bank_fixed <- bank_additional_df %>%
-  mutate(
-    across(c(emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed),
-           ~ suppressWarnings(parse_number(.x)))
-  )
-
-# --- 2) Numeric variables ---
-numeric_df <- bank_fixed %>% select(where(is.numeric))
-
+# Plot numeric variables
 for (col in names(numeric_df)) {
-  p <- ggplot(bank_fixed, aes(x = .data[[col]])) +
-    geom_histogram(bins = 30, fill = viridis(1, begin = 0.3, end = 0.8), color = "white", alpha = 0.8) +
-    theme_minimal(base_size = 13) +
-    labs(title = paste("Distribution of", col),
-         x = col, y = "Frequency")
+  p <- numeric_df %>%
+    ggplot(aes(x = .data[[col]])) +
+    geom_histogram(bins = 30, fill = viridis(1, begin = 0.2, end = 0.9), alpha = 0.8) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = 9),
+      axis.title.x = element_text(size = 11),
+      axis.title.y = element_text(size = 11),
+      plot.title = element_text(size = 14, face = "bold")
+    ) +
+    ylab("Frequency") +
+    xlab(col) +
+    ggtitle(paste("Distribution of", col))
+  
   print(p)
 }
 
-# --- 3) Categorical variables ---
-categorical_df <- bank_fixed %>% select(where(~is.character(.x) || is.factor(.x)))
-
-for (col in names(categorical_df)) {
-  p <- ggplot(bank_fixed, aes(x = fct_infreq(as.factor(.data[[col]])))) +
-    geom_bar(fill = viridis(1, begin = 0.3, end = 0.8), alpha = 0.8) +
-    theme_minimal(base_size = 13) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = paste("Distribution of", col),
-         x = col, y = "Count")
-  print(p)
-}
 
 ```
+
+## How Are Categorical Variables Distributed?  
+
+### Job  
+- Bars show how many clients belong to each job type.  
+- **Most common:** *admin.*, *blue-collar*, and *technician*.  
+- **Rare categories:** *illiterate* and *unknown* (very small bars).  
+
+---
+
+### Marital Status  
+- Categories: *married*, *single*, *divorced*.  
+- **Married** is the dominant group.  
+
+---
+
+### Education  
+- Compares counts of *basic*, *high.school*, and *university.degree*.  
+- Reveals which education level is most common in the dataset.  
+
+---
+
+### Default / Housing / Loan  
+- Variables have levels: *yes / no / unknown*.  
+- **Default:** Vast majority are *no* or *unknown*; very few *yes*.  
+- **Housing loan:** Many *yes*, but also a large portion *no*.  
+- **Personal loan:** Mostly *no*; *yes* is rare.  
+- In all cases, *no* overwhelmingly dominates.  
+
+---
+
+### Contact Method  
+- *cellular* vs *telephone*.  
+- In later campaigns, **cellular dominates**, so that bar is higher.  
+
+---
+
+### Month / Day of Week  
+- Show seasonal patterns of campaign activity.  
+- **Peak months:** May, August, July, November → tall bars.  
+- Day of week distribution shows midweek contacts were more common.  
+
+---
+
+### Previous Outcome (poutcome)  
+- Outcome of the previous marketing campaign.  
+- Almost all are *nonexistent* → one very tall bar.  
+- *Failure* and *success* are very short.  
+
+---
+
+### Target Variable (y)  
+- *yes* vs *no* (subscription to term deposit).  
+- Strong class imbalance: **~88% no vs. ~12% yes**.  
+
+---
+
+##  Interpretation Takeaways  
+
+- **Imbalance:** Most categorical features are highly imbalanced (e.g., *default*, *poutcome*, *y*).  
+- **Dominant categories:** Certain levels dominate distributions (e.g., *married* in marital, *cellular* in contact).  
+- **Modeling insight:** These plots highlight the need for **rebalancing, proper encoding, or collapsing rare categories** before building predictive models.  
 
 
 ```{r}
@@ -389,31 +382,34 @@ numeric_vars <- bank_additional_df[sapply(bank_additional_df, is.numeric)]
 cor(numeric_vars, use = "complete.obs")
 
 ```
+## What Are the Relationships Between Different Variables?  
+Are the features (columns) of the dataset correlated?  
 
+---
 
-age & duration (-0.00087):	Essentially zero correlation; age of client has no linear relationship with call duration.
-age & campaign (0.0046):	Nearly zero; older clients are not contacted more or less often.
-age & pdays (-0.034):	Very weak negative correlation; older clients slightly more likely to have been contacted recently in previous campaigns, but effect is negligible.
-age & previous (0.024):	Essentially no correlation; age does not relate to prior contacts.
-duration & campaign (-0.072):	Very weak negative correlation; longer calls slightly associated with fewer calls in this campaign.
-duration & pdays (-0.048):	Very weak negative correlation; call duration not meaningfully related to days since last contact.
-duration & previous (0.021):	Almost zero; prior contacts do not affect call length.
-campaign & pdays (0.053):	Very weak positive correlation; number of contacts in this campaign is slightly higher for clients contacted longer ago.
-campaign & previous (-0.079):	Very weak negative correlation; more prior contacts slightly associated with fewer contacts in this campaign.
-pdays & previous (-0.588):	Moderate to strong negative correlation; as days since last contact (pdays) increases, the number of prior contacts decreases. Makes sense: if someone was contacted long ago, there were fewer previous contacts.
+### Pairwise Correlations  
 
-Key takeaways:
+- **age & duration (-0.00087):** Essentially zero; the client’s age has no linear relationship with call duration.  
+- **age & campaign (0.0046):** Nearly zero; older clients are not contacted more or less often.  
+- **age & pdays (-0.034):** Very weak negative correlation; older clients are slightly more likely to have been contacted recently in previous campaigns, but the effect is negligible.  
+- **age & previous (0.024):** Essentially no correlation; age does not relate to prior contacts.  
 
-Most variables have very weak correlations (close to 0), meaning they are largely independent.
+- **duration & campaign (-0.072):** Very weak negative correlation; longer calls are slightly associated with fewer contacts in this campaign.  
+- **duration & pdays (-0.048):** Very weak negative correlation; call duration is not meaningfully related to days since last contact.  
+- **duration & previous (0.021):** Almost zero; prior contacts do not affect call length.  
 
-The only strong relationship is between pdays and previous (-0.588), which is meaningful for modeling.
+- **campaign & pdays (0.053):** Very weak positive correlation; clients contacted longer ago may have slightly more contacts in this campaign.  
+- **campaign & previous (-0.079):** Very weak negative correlation; more prior contacts are slightly associated with fewer contacts in this campaign.  
 
-Variables like age, duration, and campaign are not strongly correlated with each other, so multicollinearity is unlikely among them.
+- **pdays & previous (-0.588):** Moderate to strong negative correlation; as days since last contact (pdays) increases, the number of prior contacts decreases. This makes sense: if someone was contacted long ago, there were fewer previous contacts.  
 
-======================================================================================================================
+---
 
-What are the relationships between different variables? Are the features (columns) of your data correlated?
+### Key Takeaways  
 
+- **Most variables show very weak correlations** (close to 0), meaning they are largely independent.  
+- **The only strong relationship** is between *pdays* and *previous* (-0.588), which is meaningful for modeling.  
+- **Variables such as age, duration, and campaign** are not strongly correlated with each other, so **multicollinearity is unlikely** among them.  
 
 ```{r}
 library(tidyverse)
@@ -453,69 +449,85 @@ ggplot(corr_long, aes(Var1, Var2, fill = value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-Each tile shows the Pearson correlation coefficient between two numeric variables (from –1 to +1).
+## Correlation Heatmap Interpretation  
 
-Colors:
+The heatmap displays **Pearson correlation coefficients** between numeric features (ranging from –1 to +1).  
 
-Blue = negative correlation (closer to –1)
+- **Red:** strong positive correlation  
+- **Blue:** strong negative correlation  
+- **White:** near zero (no linear relationship)  
+- **Numbers inside each tile:** exact correlation values  
 
-Red = positive correlation (closer to +1)
+---
 
-White = near 0 (no linear relationship)
+### Key Observations  
 
-Numbers inside tiles are the exact correlation values.
+- **Target Variable (y_num)**  
+  - Weak correlations overall (|r| < 0.4).  
+  - Slight positive relationship with *duration* (0.41) and *nr.employed* (0.35).  
+  - Weak negative relationships with *pdays* (–0.32) and *previous* (–0.23).  
+  - *Interpretation:* Subscription outcome is only weakly associated with individual numeric features.  
 
-Key Observations:
+- **Strong Positive Correlations**  
+  - *euribor3m* and *nr.employed* (0.97).  
+  - *euribor3m* and *emp.var.rate* (0.95).  
+  - *emp.var.rate* and *nr.employed* (0.91).  
+  - *cons.price.idx* and *euribor3m* (0.88).  
+  - *Interpretation:* These economic indicators move together, showing redundancy. Dimensionality reduction or feature selection may be needed.  
 
-Age vs Others:
+- **Strong Negative Correlations**  
+  - *pdays* and *previous* (–0.59).  
+  - *emp.var.rate* and *cons.conf.idx* (–0.53).  
+  - *euribor3m* and *cons.conf.idx* (–0.53).  
+  - *Interpretation:* Clients contacted long ago had fewer prior contacts; consumer confidence moves opposite to employment variation and interest rates.  
 
-Very close to 0 with all variables (≈0.01–0.04).
+- **Near-Zero Correlations**  
+  - *Age* with nearly all variables (–0.01 to 0.13).  
+  - *Campaign* with most others (–0.08 to 0.15).  
+  - *Interpretation:* These features are largely independent.  
 
-Interpretation: Age is largely independent; older/younger clients don’t systematically differ in campaign, pdays, etc.
+---
 
-Duration vs Campaign / Pdays / Previous
+### Takeaways  
 
-All correlations are very weak (≈ –0.03 to 0.04).
+- **y_num** has only weak direct correlations → predictive strength will likely come from interactions or non-linear effects.  
+- **Economic variables (euribor3m, nr.employed, emp.var.rate, cons.price.idx)** are highly correlated → risk of multicollinearity; may need PCA or dropping redundant features.  
+- **pdays and previous** show a meaningful negative relationship (–0.59) → consistent with campaign structure.  
+- **Most other features are independent**, reducing concerns of multicollinearity outside of the economic block.  
 
-Slight negative with Previous (≈ –0.06).
+Overall, the heatmap highlights **clusters of correlated economic indicators** and a few notable structural relationships, but confirms that **most client-level features are weakly correlated**. This suggests feature engineering (e.g., creating flags or buckets) may be more useful than relying on raw numeric values.  
 
-Interpretation: Call length is not strongly tied to campaign persistence or past contact history.
 
-Campaign vs Previous:
+```{r}
+# Install if needed
+# install.packages("naniar")
+# install.packages("ggplot2")
 
-Essentially 0.
+library(dplyr)
+library(ggplot2)
+library(naniar)
 
-Interpretation: Number of contacts in the current campaign is independent of how many times the client was contacted before.
+# Copy dataset
+bank_missing <- bank_additional_df
 
-Pdays vs Previous:
+# Recode special placeholders as NA
+bank_missing <- bank_missing %>%
+  mutate(across(where(is.character), ~na_if(., "unknown"))) %>% 
+  mutate(pdays = ifelse(pdays == 999, NA, pdays))
 
-Very close to 0, though structurally most are (pdays=999, previous=0).
+# 1. Missingness summary
+vis_miss(bank_missing) + 
+  ggtitle("Missing Values Heatmap (Bank Marketing Data)")
 
-Interpretation: Linear correlation is low, but in reality this is a categorical relationship (flag-like).
+# 2. Barplot of missing values by variable
+gg_miss_var(bank_missing, show_pct = TRUE) +
+  ggtitle("Percentage of Missing Values per Variable") +
+  ylab("Number of Missing Values") +
+  theme_minimal()
 
-Overall:
+```
 
-All correlations are weak (< |0.1|).
 
-Interpretation: None of these numeric variables have linear dependence. Predictive value will come from non-linear patterns, bins, or flags, not from raw correlations.
-
-Takeaway
-
-The heatmap confirms: no strong linear relationships exist among the numeric features.
-
-Structural features matter more:
-
-pdays == 999 → “never contacted before” flag.
-
-duration > threshold → long vs short calls.
-
-campaign > 3 → many attempts.
-
-For modeling, feature engineering (e.g., indicators, buckets, interactions) will be more powerful than relying on raw linear correlations.
-
-=========================================================================================================================================
-
-Are there any outliers present?
 
 ```{r}
 # Outlier Detection
@@ -558,371 +570,404 @@ ggplot(numeric_long, aes(x = variable, y = value, fill = variable)) +
 
 
 ```
-**Quick refresher first:**
+# Quick Refresher: Boxplot Guide  
 
-Center line = median.
+- **Center line:** median  
+- **Box:** IQR (Q1–Q3)  
+- **Whiskers:** last data points within Q1 − 1.5·IQR and Q3 + 1.5·IQR  
+- **Dots:** outliers (beyond those fences)  
+
+*Note:* This figure uses free scales per panel, so don’t compare absolute heights across panels.  
+
+---
+
+## Interpretation of Boxplots  
 
-Box = IQR (Q1–Q3).
+### Age  
+- Most ages fall between **45–60 years**.  
+- Median age: **~50**.  
+- Outliers: a few very high ages (80–100+). Not errors, but much higher than majority.  
 
-Whiskers = last data points within Q1 − 1.5·IQR and Q3 + 1.5·IQR.
+### Campaign  
+- Represents number of contacts made to a client during a campaign.  
+- Middle 50% of values: **1–3 contacts**.  
+- Median: ~**1–2 contacts**.  
+- Outliers: Many clients contacted **10–40+ times** → unusual.  
 
-Dots = outliers (beyond those fences).
+### Consumer Confidence Index (cons.conf.idx)  
+- Values: –45 to –37, median ~ –41 to –42.  
+- Indicates generally pessimistic sentiment.  
+- Outlier: one less negative value (~ –35).  
 
-This figure uses free scales per panel, so don’t compare absolute heights across panels.
+### Consumer Price Index (cons.price.idx)  
+- Values tightly clustered: **93.5–94.0**, median ~93.8.  
+- Very stable — no outliers.  
 
-**Interpretation of Plots**
+### Duration (Seconds)  
+- Represents last call duration.  
+- Middle 50%: a few hundred seconds (minutes).  
+- Median: **under 500–600 sec (~10 minutes)**.  
+- Outliers: Many calls lasted **2000–5000 seconds (1+ hour)**.  
 
-Age: 
+### Employment Variation Rate (emp.var.rate)  
+- Range: –2% to +1%.  
+- Median: ~0%.  
+- Whiskers: –3.5% to +1.5%.  
+- Compact distribution, no extreme outliers.  
 
-Most ages fall between about 45 and 60 years old (the purple box).
+### Euribor 3m  
+- Median: ~3%.  
+- Middle 50%: **2%–4%**.  
+- Range: 1%–5%.  
+- No outliers.  
 
-The median age is around 50.
+### Number Employed (nr.employed)  
+- Median: ~5160.  
+- Middle 50%: **5100–5200**.  
+- Stable, tight distribution.  
 
-There are some very high ages (above ~80–100) that are considered statistical outliers. These don’t necessarily mean errors, but they are much higher than the majority of the population.
+### Pdays  
+- Special code = **999** (never contacted before).  
+- Dominates distribution (~96% of clients).  
+- Outliers: very small number of clients with values near 0.  
+- Should be treated as categorical: *contacted before vs not contacted*.  
 
-Campaign:
+### Previous  
+- Median: 0.  
+- Most clients never contacted before.  
+- Outliers: a few clients contacted **1–7 times**.  
 
-It represents the number of contacts made to a client during a campaign.
+---
 
-The Box (black rectangle) shows the middle 50% of the data (between the 25th and 75th percentiles).
+## Relationship Between Variables  
 
-Here, the box is very close to 0, meaning that for most clients, the number of contacts was quite small (probably 1–3 contacts).
+Even if variables are not correlated, they can be combined into meaningful features.  
 
-The Median (line inside the box) lies near 1 or 2, so typically clients were contacted just once or twice.
+- **Age × Job:** Older clients in certain jobs may respond differently. → `age * job`.  
+- **Loan status + Housing loan:** Clients with both loans may signal financial stress. → `any_loan`.  
+- **Duration × Outcome (y):** Long calls often mean higher engagement.  
+- **Economic indicators:** Combine `emp.var.rate`, `cons.price.idx`, `cons.conf.idx`, `euribor3m`, `nr.employed` into an index.  
+- **Pdays + Previous:** Recently contacted & frequent contacts may behave differently.  
 
-The Whiskers extend to the largest "normal" values. These are still relatively low compared to the outliers.
+**Answer in short:**  
+Yes, even if variables are not correlated, they can be combined into new, meaningful features. Example: height + weight → BMI. In this dataset: housing loan + personal loan → overall debt indicator. Domain knowledge guides feature engineering.  
 
-The Red Dots (outliers) are many. Some people were contacted 10, 20, 30, even 40+ times, which is far beyond the majority. These points are unusual, so they’re marked as outliers.
+---
 
-Consumer Confidence Index (cons.conf.idx):
+## Do Any Patterns or Trends Emerge?  
 
-It measures how optimistic or pessimistic consumers are about the economy.
+- **Marketing months:** Contacts peak in May, Aug, Jul, Nov.  
+- **Contact duration:** Longer calls → higher likelihood of subscription.  
+- **Loans:** Clients without loans/defaults slightly more likely to subscribe.  
+- **Age & job:** Middle-aged (30–50) and professionals dominate.  
+- **Economic indicators:** Lower euribor3m and better emp.var.rate → higher subscriptions.  
+- **Target imbalance:** Term deposit subscription is rare (~12%).  
 
-The Box (blue rectangle) represents the middle 50% of values (between the 25th percentile and 75th percentile).
+**Summary:** Campaigns are seasonal, call length matters, and both demographics and macroeconomics influence outcomes.  
 
-Here, most values range from -45 to about -37.
+---
 
-The Median (line inside the box) sits around -41 to -42, meaning the "typical" consumer confidence is quite low (pessimistic).
+## Central Tendency and Spread  
+
+- **Age:** Mean ~40, median 38, range 17–98.  
+- **Duration:** Mean ~258 sec, median ~180 sec, skewed with long outliers.  
+- **Campaign:** Median 2, mean ~2.6, max 56.  
+- **Pdays:** Median 999, mean ~962.  
+- **Previous:** Median 0, mean 0.17, max 7.  
+- **emp.var.rate:** –3 to +1.  
+- **cons.price.idx:** 92–94.  
+- **cons.conf.idx:** –50 to –25.  
+- **euribor3m:** 0.6–5.0.  
+- **nr.employed:** 4960–5228.  
+
+**Summary:** Duration, campaign, pdays, previous are skewed. Economic indicators are stable.  
+
+---
+
+## Are There Missing Values?  
+
+No raw `NA`s, but several variables use **special placeholders**:  
+
+- **default = "unknown"** (~20%) → many clients do not disclose credit default history.  
+- **education = "unknown"** (~5%) → a smaller but noticeable fraction of clients.  
+- **job = "unknown"** (~1%) → minimal impact.  
+- **pdays = 999** (~96% of clients) → not truly missing, indicates “never contacted before.”  
+
+**Summary:**  
+The dataset contains **structural missing values** rather than random NA’s. These should be **treated as valid categories or transformed into features** (e.g., `pdays = 999` → “not previously contacted”), instead of dropping rows, to avoid losing important information.  
+
+---
+
+# PART II: Pre-Processing {.tabset}  
+
+### A. Data Cleaning  
+- Replace `"unknown"` with explicit category *missing*.  
+- Treat `pdays=999` as *not previously contacted*.  
+- Keep outliers but apply transformations (e.g., log for regression).  
+- Remove duplicates if present.  
+
+### B. Dimensionality Reduction  
+- Drop/reduce highly correlated economic indicators (emp.var.rate, euribor3m, nr.employed).  
+- Logistic regression sensitive to multicollinearity; decision trees less so.  
+
+### C. Feature Engineering  
+- **pdays:** create `was_contacted_before` (binary) + `pdays_num` (numeric if not 999).  
+- **Loans:** create `any_loan`.  
+- **Age groups:** youth <30, middle 30–50, senior >50.  
+- **Interactions:** duration × contact type.  
+
+### D. Sampling  
+- Large dataset (~41k), so no down-sampling needed.  
+- Handle imbalance (~11% “yes”) with SMOTE, undersampling, or class weights.  
+
+### E. Transformation  
+- Normalize numeric variables for regression.  
+- One-hot encode categoricals (keep `"unknown"`).  
+- Log transform skewed features (`duration`, `campaign`, `previous`).  
+
+### F. Imbalanced Data  
+- Use SMOTE or class weights.  
+- Evaluate with Precision, Recall, F1 (not just accuracy).  
+
+**Final Preprocessing Summary**  
+1. Handled structural missing values.  
+2. Retained but transformed meaningful outliers.  
+3. Reduced redundancy in economic indicators.  
+4. Engineered features (e.g., any_loan, was_contacted_before).  
+5. Prepared dataset for balanced, interpretable modeling.  
+
+---
+
+
+```{r}
+library(dplyr)
+library(forcats)
+library(caret)
+library(smotefamily)
+
+# --- 1. Load Data ---
+url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/main/Assignment_1_EDA/bank-additional-full.csv"
+bank <- read.csv2(url, stringsAsFactors = FALSE)
+
+# --- 2. Clean Data ---
+num_char_cols <- c("emp.var.rate","cons.price.idx","cons.conf.idx","euribor3m","nr.employed")
+
+df <- bank %>%
+  mutate(across(all_of(num_char_cols), ~ suppressWarnings(as.numeric(.)))) %>%
+  mutate(across(where(is.character) & !matches("^y$"),
+                ~ factor(ifelse(. == "unknown", "missing", .)))) %>%
+  mutate(pdays = ifelse(pdays == 999, NA_integer_, pdays)) %>%
+  distinct()
+
+df$y <- factor(df$y, levels = c("no","yes"))
+
+# --- 3. Feature Engineering ---
+df <- df %>%
+  mutate(
+    was_contacted_before = ifelse(is.na(pdays), 0L, 1L),
+    pdays_num            = ifelse(is.na(pdays), NA_integer_, pdays),
+    any_loan             = ifelse(loan == "yes" | housing == "yes", "yes", "no"),
+    age_group            = case_when(
+      age < 30 ~ "youth",
+      age <= 50 ~ "middle",
+      TRUE ~ "senior"
+    ),
+    duration_contact     = duration * ifelse(contact == "cellular", 1, 0),
+    duration_log         = log1p(duration),
+    campaign_log         = log1p(campaign),
+    previous_log         = log1p(previous)
+  )
+
+# --- 4. Split target and predictors ---
+y <- df$y
+predictors <- df %>% select(-y)
+
+# --- 5. One-hot encode + impute + scale (recipe-style with caret) ---
+dmy <- dummyVars(" ~ .", data = predictors)
+X <- data.frame(predict(dmy, newdata = predictors))
+
+# Impute + scale
+pre <- preProcess(X, method = c("medianImpute","center","scale"))
+X_imp <- predict(pre, X)
+
+# ✅ Check consistency
+stopifnot(nrow(X_imp) == length(y))
+cat("Rows in X_imp:", nrow(X_imp), " | Rows in y:", length(y), "\n")
+
+# --- 6. Handle Imbalance ---
+## Option A: SMOTE
+set.seed(123)
+sm <- SMOTE(X_imp, y, K = 5)
+df_smote <- sm$data
+df_smote$y <- factor(df_smote$class, levels = c("no","yes"))
+df_smote$class <- NULL
+table(df_smote$y)
 
-The Whiskers extend to the lowest and highest values that are not outliers.
+## Option B: Upsampling
+set.seed(123)
+up <- upSample(x = X_imp, y = y, yname = "y")
+table(up$y)
+
+```
+I used caret::dummyVars() → safer, keeps all rows.
 
-Here, they cover roughly -50 to -35.
+Applied preProcess() after dummy encoding → imputes pdays_num and others before scaling.
 
-The Red Dot (outlier) a value just above -35, which is less negative than the rest.
+Now nrow(X_imp) and length(y) will always match (41,176 rows).
 
-This means there was a rare period where consumers were slightly more optimistic compared to the usual pessimistic trend.
+```{r}
+# visual checks to confirm class balance before and after SMOTE / Upsampling.
 
-Consumer Price Index (cons.price.idx):
+library(ggplot2)
 
-It measures inflation — the average change in prices consumers pay for goods and services.
+# --- Original balance ---
+orig_tbl <- as.data.frame(table(y))
+colnames(orig_tbl) <- c("Class","Count")
 
-The Box (blue rectangle) represents the middle 50% of the values.
+ggplot(orig_tbl, aes(x = Class, y = Count, fill = Class)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = Count), vjust = -0.5) +
+  labs(title = "Class Balance - Original Data", y = "Count") +
+  theme_minimal()
 
-Here, values are tightly clustered between 93.5 and 94.0.
+# --- After SMOTE ---
+smote_tbl <- as.data.frame(table(df_smote$y))
+colnames(smote_tbl) <- c("Class","Count")
 
-The Median (line inside the box) sits right around 93.8–93.9, which is the "typical" CPI in this dataset.
+ggplot(smote_tbl, aes(x = Class, y = Count, fill = Class)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = Count), vjust = -0.5) +
+  labs(title = "Class Balance - After SMOTE", y = "Count") +
+  theme_minimal()
 
-The Whiskers (vertical lines) extend slightly above and below the box, but not very far.
+# --- After Upsampling ---
+up_tbl <- as.data.frame(table(up$y))
+colnames(up_tbl) <- c("Class","Count")
 
-This shows that there isn’t much variation in CPI — prices were quite stable.
+ggplot(up_tbl, aes(x = Class, y = Count, fill = Class)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = Count), vjust = -0.5) +
+  labs(title = "Class Balance - After Upsampling", y = "Count") +
+  theme_minimal()
 
-No Outliers - this one doesn’t show any red dots.
+```
+```{r}
+# Split into Train/Test
 
-That means all CPI values fall within a reasonable range — no unusual inflation/deflation spikes.
+set.seed(123)
+trainIndex <- createDataPartition(y, p = 0.7, list = FALSE)
 
-The consumer price index in this dataset is very stable, with little variation, clustered tightly around 93.8.
+# Original
+X_train <- X_imp[trainIndex, ]
+X_test  <- X_imp[-trainIndex, ]
+y_train <- y[trainIndex]
+y_test  <- y[-trainIndex]
 
-Duration (Seconds):
 
-This boxplot represents the variable duration, which usually refers to the duration of the last contact with a client (in seconds) in marketing/banking datasets.
+```
 
-The Box (black rectangle) captures the middle 50% of call durations.
+```{r}
+# Train Logistic Regression (Original)
 
-Here, most calls lasted a few hundred seconds (a few minutes).
+model_orig <- glm(y_train ~ ., data = data.frame(y_train, X_train), family = binomial)
+pred_orig  <- predict(model_orig, newdata = X_test, type = "response")
+pred_class_orig <- ifelse(pred_orig > 0.5, "yes", "no")
 
-The Median (line inside the box) - The typical call length is relatively short (under 500–600 seconds, i.e., under ~10 minutes).
+confusionMatrix(factor(pred_class_orig, levels=c("no","yes")), y_test)
 
-The Whiskers (vertical lines) - Show the reasonable range of call lengths.
 
-Calls longer than this range are flagged as unusual.
+```
+```{r}
+# Train Logistic Regression (SMOTE)
 
-The Red Dots (outliers) - There are many! Some calls lasted 2000, 3000, even 4000–5000 seconds which is more than an hour and are marked as outliers.
+# Split SMOTE data
+set.seed(123)
+trainIndex_smote <- createDataPartition(df_smote$y, p = 0.7, list = FALSE)
 
-We need to decide how to handle these extreme durations (outliers) when preparing dataset for machine learning.
+train_smote <- df_smote[trainIndex_smote, ]
+test_smote  <- df_smote[-trainIndex_smote, ]
 
+model_smote <- glm(y ~ ., data = train_smote, family = binomial)
+pred_smote  <- predict(model_smote, newdata = test_smote, type = "response")
+pred_class_smote <- ifelse(pred_smote > 0.5, "yes", "no")
 
-Employment Variation Rate (emp.var.rate):
+confusionMatrix(factor(pred_class_smote, levels=c("no","yes")), test_smote$y)
 
-It measures the change in employment levels compared to the previous quarter.
 
-Positive values → employment is increasing (job market is stronger).
+```
+```{r}
+# Train Logistic Regression (Upsampled)
 
-Negative values → employment is decreasing (job market is weaker).
+# Split Upsampled data
+set.seed(123)
+trainIndex_up <- createDataPartition(up$y, p = 0.7, list = FALSE)
 
-So this variable gives context about the economic environment at the time of the bank campaign call.
+train_up <- up[trainIndex_up, ]
+test_up  <- up[-trainIndex_up, ]
 
-Box (IQR range): Most of the values are between roughly –2% and +1%. 
+model_up <- glm(y ~ ., data = train_up, family = binomial)
+pred_up  <- predict(model_up, newdata = test_up, type = "response")
+pred_class_up <- ifelse(pred_up > 0.5, "yes", "no")
 
-This reflects that during the campaign period, some quarters had sharp employment declines, while others had slight growth (+1).
+confusionMatrix(factor(pred_class_up, levels=c("no","yes")), test_up$y)
 
-Median (center line): Around 0%, meaning half the values are below 0 and half above.
+```
+Original: High accuracy, but recall for "yes" will be poor (model predicts "no" most of the time).
 
-Whiskers: Extend from about –3.5% to +1.5%, showing the full spread of typical observations.
+SMOTE: Recall for "yes" improves since synthetic examples balance the dataset.
 
-Outliers: None are marked beyond the whiskers in this plot → the distribution looks fairly compact.
+Upsampling: Recall also improves, but can overfit since it duplicates minority examples.
 
 
-euribor3m: (3-month Euro Interbank Offered Rate)
+# PART III: Algorithm Selection {.tabset}  
 
-It’s the interest rate at which European banks lend money to each other for 3 months.
+### Business Context  
+- **Goal:** predict subscription (y = yes/no).  
+- **Size:** ~41k records, mixed variables.  
+- **Challenge:** Class imbalance (~11% yes).  
+- **Need:** Balance interpretability and predictive power.  
 
-Median (center line): around 3%.
+### Candidate Algorithms  
 
-IQR (box): most values lie between ~2% and ~4%.
+**1. Logistic Regression**  
+- Pros: interpretable coefficients, probability outputs, efficient.  
+- Cons: assumes linear log-odds, requires preprocessing, may miss nonlinearities.  
 
-Whiskers: extend roughly from 1% to 5%.
+**2. Decision Tree**  
+- Pros: handles numeric/categorical, captures interactions, intuitive rules.  
+- Cons: prone to overfitting, less stable, lower accuracy than ensembles.  
 
-Outliers: None visible → values stay within a normal range.
+**3. Naïve Bayes (secondary)**  
+- Pros: fast, works with categorical data, probabilistic.  
+- Cons: assumes independence, less accurate on structured business data.  
 
+---
 
-nr.employed (number of employees in the economy - employment index):
+### Recommended Algorithm  
+- **Primary:** Logistic Regression → interpretability + regulatory alignment.  
+- **Secondary:** Decision Tree → captures nonlinear patterns, generates actionable rules.  
 
-It reflects the overall labor market size and conditions during the campaign period.
+---
 
-Median (center line): around 5,160 employees (index value).
+### Responses to Questions  
 
-IQR (box): most values lie between ~5,100 and 5,200.
+1. **Are there labels?**  
+   Yes → y (yes/no). It’s supervised classification.  
 
-Whiskers: extend slightly lower, near 5,000.
+2. **How does algorithm choice relate to data?**  
+   Large, imbalanced dataset with mixed variables → logistic regression + decision tree fit well.  
 
-Outliers: None — the distribution is very tight and stable.
+3. **What if dataset < 1,000 records?**  
+   Prefer simpler models (logistic regression, LDA, Naïve Bayes). Decision trees may be unstable.  
 
+---
 
-pdays (Number of days since the client was last contacted in a previous marketing campaign):
+### Justification  
+1. **Data characteristics:** supervised, binary classification with imbalance → logistic regression fits well.  
+2. **Problem type:** supervised learning, classification.  
+3. **Business needs:** interpretability and actionable insights → logistic regression + decision tree.  
 
-This boxplot shows the variable pdays, which refers to the number of days since a client was last contacted in a previous campaign.
+---
 
-The Box and Whisker (long black line at the top) - The majority of data points are at 999, meaning most clients had not been previously contacted.
-
-This dominates the distribution, so the box is pushed to the high end.
-
-The Red Dot (outlier near 0) - This represents clients who were recently contacted (within a few days).
-
-These cases are statistically rare compared to the overwhelming 999 values, so they appear as outliers.
-
-Treat 999 as a separate category (not a number).
-
-If using for modeling: We can create a binary feature: was_contacted_before = (pdays != 999).
-
-Keep actual numeric values for clients with real pdays
-
-
-previous (number of contacts performed before this campaign for a given client):
-
-It tells us how many times the client was approached in earlier marketing campaigns.
-
-Box (IQR): Collapsed at 0 → meaning the vast majority of clients were never contacted before.
-
-Median: 0.
-
-Outliers (red dots): Small number of clients had between 1 and 7 prior contacts, which show as outliers.
-
-#==========================================================================================================================================
-
-
-Relationship between variables (this is more of a domain knowledge  (2) question compared to #1 i.e. even if variables are not correlated can they be combined e.g. height & weight combined to be new feature BMI?)
-
-Some possibilities in the dataset:
-
-Age × Job
-
-Older clients in certain jobs (e.g., retired, management) may respond differently to marketing than younger people in the same jobs.
-
-Interaction term: age * job.
-
-Loan status + Housing loan
-
-Having both a personal loan and a housing loan may signal financial stress or risk.
-
-Could engineer a combined feature: has_any_loan = (loan == "yes" | housing == "yes").
-
-Contact duration + Outcome (y)
-
-Long calls may indicate more engaged clients.
-
-Duration itself is skewed, but combined with outcome it can be used to model conversion likelihood.
-
-Economic indicators
-
-emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed
-
-Instead of using them separately, you could combine into an economic sentiment index or capture interactions (e.g., interest rates matter more when unemployment is high).
-
-pdays + previous
-
-A client contacted recently (low pdays) and contacted multiple times before (high previous) may behave differently from someone new.
-
-Interaction: recently_contacted & frequent_contact.
-
-General Guidance
-
-Don’t rely only on correlation → correlation measures linear pairwise relationships, but useful combinations may be non-linear or conditional.
-
-Think in terms of domain knowledge → which variables together describe meaningful behavior?
-
-Use transformations/interactions → ratios, differences, products, categorical combinations.
-
-Validate with models → after creating new features, check if they improve predictive power (e.g., using logistic regression, random forests, or feature importance).
-
-Answer in short:
-Yes, even if variables are not correlated, they can be combined to form new, meaningful features. For example, height and weight → BMI, or in your dataset, housing loan + personal loan → overall debt indicator. The key is to use domain knowledge to create features that capture real-world relationships, then test whether they improve prediction.
-
-# ========================================================================================================================================
-
-Do any patterns or trends emerge in the data?
-
-Marketing months: Contacts are not spread evenly across the year; most campaigns were in May, Aug, Jul, Nov.
-
-Contact duration: Longer calls tend to correspond to clients who subscribed (y = yes).
-
-Loans: Clients without loans or defaults are slightly more likely to subscribe.
-
-Age & job: Middle-aged clients (30–50) and professionals (admin., management) dominate the dataset.
-
-Economic indicators: Lower euribor3m (interest rates) and better emp.var.rate often coincide with higher subscription rates.
-
-Target imbalance: The strong skew in y shows that term deposit subscription is relatively rare.
-
-Summary: Campaigns are seasonal, calls are short but long calls may matter, and economic conditions + demographics influence client behavior.
-
-# ========================================================================================================================================
-
-What is the central tendency and spread of each variable?
-
-(Numeric variables summary from your dataset snapshot)
-
-Age → Mean ~40, median 38, spread 17–98 years.
-
-Duration → Mean ~258 sec, median ~180 sec, highly skewed (outliers up to ~4,918 sec).
-
-Campaign → Median 2, mean ~2.6, right-skewed with max 56.
-
-Pdays → Median 999 (never contacted), mean ~962, range 0–999.
-
-Previous → Median 0, mean ~0.17, max 7.
-
-Emp.var.rate → Small range (economic index), values around -3 to +1.
-
-Cons.price.idx → Range ~92–94.
-
-Cons.conf.idx → Range ~ -50 to -25.
-
-Euribor3m → Range ~0.6–5.0.
-
-Nr.employed → Range ~4960–5228.
-
-Summary:
-
-Strong skewness in duration, campaign, pdays, previous.
-
-Central tendency (mean/median) differs significantly for skewed variables.
-
-Economic indicators are more stable and smooth.
-
-# =============================================================================================================================================
-
-Are there any missing values and how significant are they?
-
-No true NA values reported in the dataset, but some categories encode “missing” as text:
-
-default = "unknown" (quite common, ~20%).
-
-education = "unknown" (~5%).
-
-job = "unknown" (~1%).
-
-pdays = 999 is a special missing code, meaning “not previously contacted” (~96% of clients).
-
-Summary:
-
-No raw NA’s, but “unknown” and “999” act as structural missing values.
-
-Most clients were never contacted before (pdays = 999).
-
-Handling “unknown” categories is important (drop, treat as separate class, or impute).
-
-# ===========================================================================================================================================
-
-Algorithm Selection for Bank Marketing Dataset
-Business Context
-The business goal is to predict whether a client subscribes to a term deposit.
-•	Target variable (y): yes / no → a binary label.
-•	Dataset size: ~41,000 records with both numeric and categorical features.
-•	Challenge: Class imbalance (only ~11–12% “yes”).
-•	Requirement: A model that balances predictive accuracy with interpretability so bank managers can act on the insights.
-
-
-Candidate Algorithms
-1. Logistic Regression
-•	Pros
-Interpretable coefficients (odds ratios) → managers can see how features (e.g., age, housing loan, call duration) impact probability of subscription.
-Outputs probabilities → supports customer ranking/prioritization.
-Efficient on large datasets; easy to implement.
-•	Cons
-Assumes linear relationship in log-odds space.
-Requires preprocessing (dummy coding for categorical variables).
-May underperform if nonlinear interactions are important.
- Consistency with EDA: Our EDA showed that features like call duration, campaign count, and prior contact history strongly affect outcomes. Logistic regression can directly quantify these relationships and provide interpretable results.
-
-
-2. Decision Tree
-•	Pros
-Naturally handles both numeric and categorical variables.
-Captures nonlinear patterns and feature interactions automatically.
-Produces intuitive “if–then” rules → easy for marketing managers to interpret.
-•	Cons
-Single trees prone to overfitting.
-Less stable: small changes in data can change splits.
-Accuracy generally lower than ensemble methods.
- Consistency with EDA: The EDA revealed nonlinear relationships and skewed distributions (e.g., many clients never previously contacted, pdays=999). A decision tree can handle these patterns directly and translate them into actionable rules (e.g., “Clients with long call duration and no loan → higher likelihood of subscription”).
-
-
-3. Naïve Bayes (secondary option)
-•	Pros
-Very fast and scalable to large datasets.
-Works well with categorical features.
-Provides simple probabilistic interpretation.
-•	Cons
-Assumes conditional independence among features (rarely holds in practice).
-Less accurate than logistic regression or decision trees on structured business data.
-
-
- Recommended Algorithm
-•	Primary choice: Logistic Regression → Best balance of interpretability, regulatory friendliness, and handling of class imbalance with probability thresholds.
-•	Secondary choice: Decision Tree → Complements logistic regression by capturing nonlinear patterns and generating clear business rules.
-
-
-Responses to Specific Questions
-1.	Are there labels in your data? Did that impact your choice of algorithm?
-Yes → y (yes/no) is a labeled binary target.
-This makes it a supervised classification problem, guiding the choice toward logistic regression and decision trees.
-2.	How does your choice of algorithm relate to the dataset?
-Dataset is large (40k+) and imbalanced. Logistic regression is efficient at scale, while decision trees naturally handle mixed data types and outliers. Both align well with the dataset’s structure.
-3.	Would your choice of algorithm change if there were fewer than 1,000 records, and why?
-With fewer records, simpler models like Logistic Regression, LDA, or Naïve Bayes would be safer to avoid overfitting.
-Decision trees can become unstable on very small datasets. Logistic regression would remain the preferred option.
-
-
- Justification Based on Rubric
-1.	Data characteristics, constraints & insights (10):
-Binary classification, mix of categorical/numeric features, large dataset with imbalance. Logistic regression fits binary data well; decision trees capture nonlinearities observed in EDA.
-2.	Problem Type (Supervised vs. Unsupervised) (5):
-This is supervised learning with labels → classification models are appropriate (not PCA or other unsupervised methods).
-3.	Business insight (5):
-Banks need interpretability to justify marketing actions to regulators and managers. Logistic regression provides transparency; decision trees provide intuitive rule sets.
-
-
- Final Answer (1 line)
-I recommend Logistic Regression as the primary model for its interpretability and business alignment, with Decision Trees as a complementary model to capture nonlinear patterns, given this is a supervised classification problem with labeled binary data and imbalanced classes.
-
-
+### Final Answer  
+I recommend **Logistic Regression** as the primary model for interpretability and alignment with business context, with **Decision Trees** as a complementary method to capture nonlinear patterns.  
