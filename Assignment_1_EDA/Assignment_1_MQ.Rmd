@@ -2,11 +2,13 @@
 title: "Assignment1_Data622"
 author: "Mubashira Qari"
 date: "2025-09-15"
-output: 
+output:
   html_document:
     toc: true
     toc_float: true
     number_sections: true
+  pdf_document:
+    toc: true
 ---
 
 # Bank Marketing Dataset Variables  
@@ -262,26 +264,36 @@ describe(categorical_df)
 What is the overall distribution of each variable?
 
 ```{r}
-library(dplyr)
-library(tidyr)
 library(ggplot2)
+library(dplyr)
 library(forcats)
 library(viridis)
 
+# Ensure correct types
+bank_additional_df <- bank_additional_df %>%
+  mutate(
+    euribor3m = as.numeric(euribor3m),  # force to numeric
+    nr.employed = as.numeric(nr.employed),
+    emp.var.rate = as.numeric(emp.var.rate),
+    cons.price.idx = as.numeric(cons.price.idx),
+    cons.conf.idx = as.numeric(cons.conf.idx)
+  )
+
 # Separate categorical and numeric columns
 categorical_df <- bank_additional_df %>% select(where(is.character))
-numeric_df <- bank_additional_df %>% select(where(is.numeric))
+numeric_df     <- bank_additional_df %>% select(where(is.numeric))
 
-# Plot categorical variables
+# --- Plot categorical variables (one by one) ---
 for (col in names(categorical_df)) {
   p <- categorical_df %>%
     ggplot(aes(x = fct_infreq(.data[[col]]))) +
     geom_bar(fill = viridis(1, begin = 0.3, end = 0.8), alpha = 0.8) +
+    coord_flip() +   # flip for readability
     theme_minimal() +
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
-      axis.title.x = element_blank(),
-      axis.title.y = element_text(size = 11),
+      axis.text.y = element_text(size = 9),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 11),
       plot.title = element_text(size = 14, face = "bold")
     ) +
     ylab("Frequency") +
@@ -290,27 +302,24 @@ for (col in names(categorical_df)) {
   print(p)
 }
 
-# Plot numeric variables
+# --- Plot numeric variables (histogram + density) ---
 for (col in names(numeric_df)) {
   p <- numeric_df %>%
     ggplot(aes(x = .data[[col]])) +
-    geom_histogram(bins = 30, fill = viridis(1, begin = 0.2, end = 0.9), alpha = 0.8) +
+    geom_histogram(aes(y = ..density..), bins = 40,
+                   fill = viridis(1, begin = 0.3, end = 0.8), color = "white") +
+    geom_density(color = "red", size = 0.8) +
     theme_minimal() +
-    theme(
-      axis.text.x = element_text(size = 9),
-      axis.title.x = element_text(size = 11),
-      axis.title.y = element_text(size = 11),
-      plot.title = element_text(size = 14, face = "bold")
-    ) +
-    ylab("Frequency") +
-    xlab(col) +
-    ggtitle(paste("Distribution of", col))
+    ggtitle(paste("Distribution of", col)) +
+    ylab("Density") +
+    xlab(col)
   
   print(p)
 }
 
 
 ```
+
 
 ## How Are Categorical Variables Distributed?  
 
@@ -512,38 +521,36 @@ bank_missing <- bank_additional_df
 
 # Recode special placeholders as NA
 bank_missing <- bank_missing %>%
-  mutate(across(where(is.character), ~na_if(., "unknown"))) %>% 
+  mutate(across(where(is.character), ~ na_if(., "unknown"))) %>% 
   mutate(pdays = ifelse(pdays == 999, NA, pdays))
 
-# 1. Missingness summary
-vis_miss(bank_missing) + 
-  ggtitle("Missing Values Heatmap (Bank Marketing Data)")
-
-# 2. Barplot of missing values by variable
+# Single barplot: percentage of missing values per variable
 gg_miss_var(bank_missing, show_pct = TRUE) +
   ggtitle("Percentage of Missing Values per Variable") +
-  ylab("Number of Missing Values") +
+  ylab("Percentage Missing") +
   theme_minimal()
+
 
 ```
 
 
 
 ```{r}
-# Outlier Detection
 
+# Outlier Detection
+# Load libraries
+# Outlier Detection
 # Load libraries
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(readr)
 library(viridis)
 
-# --- 1) Fix numeric-like character columns ---
+# --- 1) Fix numeric-like character columns safely ---
 bank_fixed <- bank_additional_df %>%
   mutate(
     across(c(emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed),
-           ~ suppressWarnings(parse_number(.x)))
+           ~ as.numeric(.x))   # convert if not already numeric
   )
 
 # --- 2) Select numeric columns ---
@@ -566,7 +573,6 @@ ggplot(numeric_long, aes(x = variable, y = value, fill = variable)) +
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank()
   )
-
 
 
 ```
@@ -739,7 +745,7 @@ The dataset contains **structural missing values** rather than random NA’s. Th
 ---
 
 
-```{r}
+```{r warning=FALSE}
 library(dplyr)
 library(forcats)
 library(caret)
@@ -750,6 +756,13 @@ url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/main/Assignment_1_E
 bank <- read.csv2(url, stringsAsFactors = FALSE)
 
 # --- 2. Clean Data ---
+
+# For the columns listed, turn them into numeric columns
+# For all character columns (except y), replace the word 'unknown' with 'missing' and then make them categorical factors
+# Turn 999 in the pdays column into proper missing values
+# Make sure no duplicate records remain
+# The target variable (y) is categorical with two values: no/yes, and I want ‘no’ to come first.
+
 num_char_cols <- c("emp.var.rate","cons.price.idx","cons.conf.idx","euribor3m","nr.employed")
 
 df <- bank %>%
@@ -762,6 +775,15 @@ df <- bank %>%
 df$y <- factor(df$y, levels = c("no","yes"))
 
 # --- 3. Feature Engineering ---
+
+# Checks if the column pdays is missing (NA).
+
+# If missing → assign 0 (never contacted before).
+
+# If not missing → assign 1 (contacted before).
+
+# Stored as integer (0L or 1L).
+
 df <- df %>%
   mutate(
     was_contacted_before = ifelse(is.na(pdays), 0L, 1L),
@@ -790,7 +812,7 @@ X <- data.frame(predict(dmy, newdata = predictors))
 pre <- preProcess(X, method = c("medianImpute","center","scale"))
 X_imp <- predict(pre, X)
 
-# ✅ Check consistency
+# Check consistency
 stopifnot(nrow(X_imp) == length(y))
 cat("Rows in X_imp:", nrow(X_imp), " | Rows in y:", length(y), "\n")
 
@@ -809,11 +831,36 @@ up <- upSample(x = X_imp, y = y, yname = "y")
 table(up$y)
 
 ```
-I used caret::dummyVars() → safer, keeps all rows.
+## Data Preprocessing Steps
 
-Applied preProcess() after dummy encoding → imputes pdays_num and others before scaling.
+The following steps were applied to prepare the dataset for modeling:
 
-Now nrow(X_imp) and length(y) will always match (41,176 rows).
+1. **Identify numeric columns**  
+   - Converted columns that should be numeric into proper numeric types.
+
+2. **Handle categorical values**  
+   - Replaced `"unknown"` text with `"missing"`.  
+   - Converted categorical columns into factors.
+
+3. **Special case: `pdays`**  
+   - Changed `pdays = 999` into proper missing values (`NA`).
+
+4. **Remove duplicates**  
+   - Dropped duplicate rows to ensure data quality.
+
+5. **Target variable**  
+   - Made the target column `y` a categorical factor with levels `"no"` and `"yes"`.
+
+6. **Encoding and transformation**  
+   - Used `caret::dummyVars()` for one-hot encoding. This approach is safer and preserves all rows.  
+   - Applied `preProcess()` *after* dummy encoding to handle imputation (e.g., `pdays_num`) before scaling and centering.
+
+7. **Final consistency check**  
+   - Ensured that the number of rows in predictors and target matched:  
+     - `nrow(X_imp)` = `length(y)` = **41,176 rows**.
+
+---
+
 
 ```{r}
 # visual checks to confirm class balance before and after SMOTE / Upsampling.
@@ -851,6 +898,8 @@ ggplot(up_tbl, aes(x = Class, y = Count, fill = Class)) +
   theme_minimal()
 
 ```
+
+
 ```{r}
 # Split into Train/Test
 
@@ -866,6 +915,7 @@ y_test  <- y[-trainIndex]
 
 ```
 
+
 ```{r}
 # Train Logistic Regression (Original)
 
@@ -877,6 +927,8 @@ confusionMatrix(factor(pred_class_orig, levels=c("no","yes")), y_test)
 
 
 ```
+
+
 ```{r}
 # Train Logistic Regression (SMOTE)
 
@@ -895,6 +947,8 @@ confusionMatrix(factor(pred_class_smote, levels=c("no","yes")), test_smote$y)
 
 
 ```
+
+
 ```{r}
 # Train Logistic Regression (Upsampled)
 
@@ -912,11 +966,21 @@ pred_class_up <- ifelse(pred_up > 0.5, "yes", "no")
 confusionMatrix(factor(pred_class_up, levels=c("no","yes")), test_up$y)
 
 ```
-Original: High accuracy, but recall for "yes" will be poor (model predicts "no" most of the time).
 
-SMOTE: Recall for "yes" improves since synthetic examples balance the dataset.
+## Model Performance Comparison
 
-Upsampling: Recall also improves, but can overfit since it duplicates minority examples.
+- **Original dataset**  
+  - Produces high overall accuracy.  
+  - However, recall for `"yes"` is poor because the model predicts `"no"` most of the time due to class imbalance.
+
+- **SMOTE (Synthetic Minority Oversampling Technique)**  
+  - Recall for `"yes"` improves since synthetic examples balance the dataset.  
+  - Provides more diverse synthetic cases compared to simple duplication.
+
+- **Upsampling**  
+  - Recall also improves by balancing the dataset.  
+  - However, it can lead to overfitting since it duplicates minority class examples instead of creating new ones.
+
 
 
 # PART III: Algorithm Selection {.tabset}  
