@@ -1,0 +1,454 @@
+---
+title: "Assignment2_Data622"
+author: "Mubashira Qari"
+date: "2025-10-04"
+output: html_document
+---
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+  pdf_document:
+    toc: true
+---
+# Bank Marketing Dataset Variables  
+
+The dataset’s main purpose is to predict whether a bank client will subscribe to a term deposit (`y = yes/no`) after a marketing campaign. Each variable provides information that may help explain or predict that outcome.  
+
+---
+
+## Client Information (Who the Customer Is)  
+
+- **age (numeric)**  
+  - *Recording:* Client’s age in years.  
+  - *Purpose:* Age often influences financial decisions (e.g., younger clients may avoid long-term deposits, older clients may be more interested in safe investments).  
+
+- **job (categorical)**  
+  - *Recording:* Type of job (e.g., admin, blue-collar, technician).  
+  - *Purpose:* Occupation reflects income stability and financial behavior.  
+
+- **marital (categorical)**  
+  - *Recording:* Marital status (single, married, divorced/widowed).  
+  - *Purpose:* Family responsibilities affect savings and investment behavior.  
+
+- **education (categorical)**  
+  - *Recording:* Highest education level completed.  
+  - *Purpose:* Education level may indicate financial literacy and likelihood to invest.  
+
+- **default (categorical)**  
+  - *Recording:* Whether client has credit in default ("yes", "no", "unknown").  
+  - *Purpose:* Default history reflects financial risk and trustworthiness.  
+
+- **housing (categorical)**  
+  - *Recording:* Whether client has a housing loan.  
+  - *Purpose:* Mortgage holders may have less disposable income for deposits.  
+
+- **loan (categorical)**  
+  - *Recording:* Whether client has a personal loan.  
+  - *Purpose:* Personal loans indicate financial obligations that may reduce likelihood of subscribing.  
+
+---
+
+## Last Contact Information (How They Were Reached)  
+
+- **contact (categorical)**  
+  - *Recording:* Communication type ("cellular" or "telephone").  
+  - *Purpose:* Some contact methods are more effective than others.  
+
+- **month (categorical)**  
+  - *Recording:* Month of the last contact.  
+  - *Purpose:* Seasonal effects — campaign success may vary across the year.  
+
+- **day_of_week (categorical)**  
+  - *Recording:* Day of the week client was contacted.  
+  - *Purpose:* Some days may be better for reaching clients (e.g., midweek vs. Monday).  
+
+- **duration (numeric)**  
+  - *Recording:* Call duration in seconds.  
+  - *Purpose:* Longer conversations often mean higher engagement.  
+  - *Note:* Duration is only known after the call, so it cannot be used in real prediction models.  
+
+---
+
+## Campaign History (Past Interactions)  
+
+- **campaign (numeric)**  
+  - *Recording:* Number of contacts during this campaign (including the last one).  
+  - *Purpose:* Too many contacts may annoy clients, reducing success.  
+
+- **pdays (numeric)**  
+  - *Recording:* Days since last contact from a previous campaign (999 = never contacted).  
+  - *Purpose:* Recency matters; recently contacted clients may behave differently.  
+
+- **previous (numeric)**  
+  - *Recording:* Number of contacts before this campaign.  
+  - *Purpose:* Reflects persistence of bank marketing; may affect likelihood of success.  
+
+- **poutcome (categorical)**  
+  - *Recording:* Outcome of the previous campaign ("success", "failure", "nonexistent").  
+  - *Purpose:* Past behavior often predicts future responses.  
+
+---
+
+## Economic Context (Overall Environment)  
+
+- **emp.var.rate (numeric)**  
+  - *Recording:* Employment variation rate (quarterly).  
+  - *Purpose:* Measures labor market changes — people may invest more when jobs are stable.  
+
+- **cons.price.idx (numeric)**  
+  - *Recording:* Consumer Price Index (monthly).  
+  - *Purpose:* Inflation affects purchasing power and saving behavior.  
+
+- **cons.conf.idx (numeric)**  
+  - *Recording:* Consumer Confidence Index (monthly).  
+  - *Purpose:* High confidence = more willingness to invest, low confidence = caution.  
+
+- **euribor3m (numeric)**  
+  - *Recording:* Euribor 3-month interest rate.  
+  - *Purpose:* Competes with deposit rates — higher Euribor may reduce deposit attractiveness.  
+
+- **nr.employed (numeric)**  
+  - *Recording:* Number of employees (quarterly labor market indicator).  
+  - *Purpose:* Reflects macroeconomic health; higher employment often correlates with more savings.  
+
+---
+
+## Target Variable  
+
+- **y (binary: "yes" / "no")**  
+  - *Recording:* Whether the client subscribed to a term deposit.  
+  - *Purpose:* This is the outcome to predict.  
+
+---
+
+## PART I: Exploratory Data Analysis (EDA) {.tabset}
+
+
+
+```{r warning=FALSE}
+# Load Libraries
+
+library(dplyr)
+library(tidyverse)
+library(psych)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+library(corrplot)
+library(ggpubr)
+library(naniar)     # for missing value visualization
+library(DataExplorer) # optional: automated EDA
+library(forcats)
+library(caret)
+library(recipes)
+library(themis)
+library(smotefamily)
+
+
+```
+
+
+
+```{r warning=FALSE}
+# Load Dataset
+
+url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/refs/heads/main/Assignment_1_EDA/bank-additional-full.csv"
+bank_additional_df <- read.csv2(url, stringsAsFactors = FALSE)
+#head(bank_additional_df)
+bank_additional_df
+```
+
+
+
+```{r}
+# Basic structure
+str(bank_additional_df)
+
+```
+
+
+```{r}
+# Dimensions
+dim(bank_additional_df)   # rows, columns
+nrow(bank_additional_df)  # number of rows
+ncol(bank_additional_df)  # number of columns
+
+```
+
+
+```{r}
+# Column names
+names(bank_additional_df)
+
+```
+
+
+```{r}
+# Summary statistics for all variables
+summary(bank_additional_df)
+
+```
+Dataset Summary:
+The dataset consists of 41,188 observations and 21 variables describing bank clients, marketing campaign details, and macroeconomic indicators.
+Most variables are categorical, with several containing “unknown” values that need preprocessing.
+Economic indicators are incorrectly stored as text and should be converted to numeric.
+The duration feature should be excluded from predictive modeling due to data leakage.
+The target variable y is binary (“yes”/“no”), confirming this as a classification problem.
+
+## Are there any missing values and how significant are they? 
+
+```{r}
+# First and last few records
+head(bank_additional_df, 10)
+tail(bank_additional_df, 10)
+
+# Missing values per column
+missing_summary <- bank_additional_df %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Missing_Count") %>%
+  mutate(Missing_Percent = round(Missing_Count / nrow(bank_additional_df) * 100, 2)) %>%
+  arrange(desc(Missing_Count))
+
+missing_summary
+
+```
+
+## Find Unwanted Columns
+
+```{r}
+
+# Identify Columns with a Single Unique Value
+
+sapply(bank_additional_df, function(x) length(unique(x)))
+
+```
+```{r}
+# Detect Columns with Mostly “Unknown” or Missing Values
+# Count 'unknown' or NA values per column
+sapply(bank_additional_df, function(x) sum(x == "unknown" | is.na(x)))
+
+```
+
+```{r}
+# Check for Duplicated or Irrelevant Columns
+duplicated_cols <- names(bank_additional_df)[duplicated(as.list(bank_additional_df))]
+duplicated_cols
+
+```
+Conclusion:
+
+The dataset has 41,188 records and 21 features — large enough for robust machine learning modeling.
+
+The target variable is y with two possible outcomes — “yes” or “no”, making this a binary classification problem.
+
+Most of your columns are categorical (character), not numeric — you’ll need to encode them (e.g., one-hot encoding or dummy variables) before modeling.
+
+A few columns that should be numeric (emp.var.rate, cons.price.idx, cons.conf.idx, euribor3m, nr.employed) are currently stored as characters (chr).
+These must be converted to numeric for analysis or correlation checks.
+
+The column duration represents call length, which is not known before prediction time → you should exclude it to avoid data leakage.
+
+Some columns (like default, housing, loan) include “unknown” values — these must be handled (replace, impute, or treat as a separate category).
+
+Out of the 21 variables in the Bank Marketing dataset, six contain “unknown” or missing values — specifically job, marital, education, default, housing, and loan.
+
+Among these, the default column has the highest missing rate (~20%) and may be excluded or handled cautiously.
+
+The other variables have relatively few missing values, so “unknown” can be treated as a valid category or imputed with the most frequent value.
+
+The remaining 15 variables are complete and ready for analysis.
+
+```{r}
+# Watch for Data Leakage
+# duration measures the call length, but you only know it after the call is made — which means it leaks information from the future into the model.
+#bank_additional_df <- subset(bank_additional_df, select = -c(duration))
+
+```
+
+```{r}
+# analyze the relationship between all categorical variables and your label (y)
+# Make sure "unknown" values are converted to proper NA, and your target variable y is a factor.
+
+# Replace "unknown" with NA
+bank_additional_df[bank_additional_df == "unknown"] <- NA
+
+# Convert target variable to factor
+bank_additional_df$y <- as.factor(bank_additional_df$y)
+bank_additional_df
+```
+
+```{r}
+# Identify All Categorical Variables
+
+cat_vars <- names(bank_additional_df)[sapply(bank_additional_df, function(x) is.character(x) | is.factor(x))]
+cat_vars <- setdiff(cat_vars, "y")  # remove target variable
+cat_vars
+
+```
+```{r}
+#Run Chi-Square Test for Each Variable vs y
+
+# This test checks if the categorical feature and the target variable are statistically related.
+
+# Chi-square test for each categorical variable vs y
+chi_results <- sapply(cat_vars, function(var) {
+  tbl <- table(bank_additional_df[[var]], bank_additional_df$y)
+  test <- chisq.test(tbl)
+  p_value <- round(test$p.value, 6)
+  return(p_value)
+})
+
+# View results
+chi_results <- sort(chi_results)
+chi_results
+
+```
+
+```{r}
+# Visualize Relationships (Proportion Bar Charts)
+
+library(ggplot2)
+
+for (var in cat_vars) {
+  print(
+    ggplot(bank_additional_df, aes_string(x = var, fill = "y")) +
+      geom_bar(position = "fill") +
+      labs(
+        title = paste("Relationship Between", var, "and Term Deposit (y)"),
+        y = "Proportion of Responses",
+        x = var
+      ) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+}
+
+```
+
+```{r}
+sig_vars <- names(chi_results[chi_results < 0.05])
+
+summary_df <- data.frame(
+  Variable = names(chi_results),
+  P_Value = chi_results,
+  Significant = ifelse(chi_results < 0.05, "Yes", "No")
+)
+
+summary_df
+
+```
+```{r}
+library(ggplot2)
+
+ggplot(summary_df, aes(x = reorder(Variable, -log10(P_Value)), y = -log10(P_Value))) +
+  geom_col(fill = "steelblue") +
+  geom_hline(yintercept = -log10(0.05), color = "red", linetype = "dashed") +
+  labs(
+    title = "Strength of Association Between Categorical Variables and Target (y)",
+    x = "Variable",
+    y = "-log10(p-value)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+# Identify Numeric Columns
+# Identify numeric columns
+num_vars <- names(bank_additional_df)[sapply(bank_additional_df, is.numeric)]
+num_vars
+
+```
+```{r}
+# Summary Statistics by Label (y)Summary Statistics by Label (y)
+library(dplyr)
+
+bank_additional_df %>%
+  group_by(y) %>%
+  summarise(across(all_of(num_vars), list(mean = mean, sd = sd), na.rm = TRUE))
+
+```
+```{r}
+# Statistical Relationship: t-test or Wilcoxon Test
+# test if each numeric variable is significantly different between “yes” and “no” clients.
+num_tests <- sapply(num_vars, function(var) {
+  ttest <- t.test(bank_additional_df[[var]] ~ bank_additional_df$y)
+  return(round(ttest$p.value, 5))
+})
+
+num_tests <- sort(num_tests)
+num_tests
+
+```
+```{r}
+# Compare numeric variable distributions for “yes” and “no” - Bar Plot
+
+library(ggplot2)
+
+for (var in num_vars) {
+  print(
+    ggplot(bank_additional_df, aes(x = y, y = .data[[var]], fill = y)) +
+      geom_boxplot() +
+      labs(
+        title = paste("Distribution of", var, "by Subscription (y)"),
+        x = "Subscription (y)",
+        y = var
+      ) +
+      theme_minimal()
+  )
+}
+
+```
+
+```{r}
+
+# Density Plot
+
+for (var in num_vars) {
+  print(
+    ggplot(bank_additional_df, aes(x = .data[[var]], color = y, fill = y)) +
+      geom_density(alpha = 0.4) +
+      labs(
+        title = paste("Density Plot of", var, "by Subscription (y)"),
+        x = var,
+        y = "Density"
+      ) +
+      theme_minimal()
+  )
+}
+
+```
+
+```{r}
+# encode the target (y) as numeric (no = 0, yes = 1) and calculate correlation with numeric variables.
+
+bank_additional_df$y_num <- ifelse(bank_additional_df$y == "yes", 1, 0)
+
+correlations <- sapply(num_vars, function(v) cor(bank_additional_df[[v]], bank_additional_df$y_num, use = "complete.obs"))
+correlations <- sort(correlations, decreasing = TRUE)
+correlations
+
+```
+```{r}
+# Combine Statistical and Visual Findings
+summary_df <- data.frame(
+  Variable = names(num_tests),
+  P_Value = round(num_tests, 5),
+  Correlation = round(correlations[names(num_tests)], 3)
+)
+
+summary_df$Significant <- ifelse(summary_df$P_Value < 0.05, "Yes", "No")
+summary_df
+
+```
+Interpretation summary:
+
+Conclusion:
+All numeric variables in the Bank Marketing dataset show statistically significant relationships with the target variable (y).
+Moderate correlations are found for duration (0.405), nr.employed (-0.355), pdays (-0.325), euribor3m (-0.308), and emp.var.rate (-0.298).
+These results suggest that both macroeconomic factors and client interaction history significantly influence subscription likelihood.
+Lower interest rates, fewer employees (economic downturns), and recent contact history increase the chance of a client subscribing.
+The duration variable shows a strong positive association but represents post-call information, making it unsuitable for model training due to data leakage.
+Weak correlations for age and consumer confidence index imply these variables have limited predictive value.

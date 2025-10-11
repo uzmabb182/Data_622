@@ -1,7 +1,9 @@
 ---
-title: "Assignment1_Data622"
+title: "Assignment2_Data622"
 author: "Mubashira Qari"
-date: "2025-09-15"
+date: "2025-10-04"
+output: html_document
+---
 output:
   html_document:
     toc: true
@@ -10,7 +12,6 @@ output:
   pdf_document:
     toc: true
 ---
-
 # Bank Marketing Dataset Variables  
 
 The dataset’s main purpose is to predict whether a bank client will subscribe to a term deposit (`y = yes/no`) after a marketing campaign. Each variable provides information that may help explain or predict that outcome.  
@@ -513,9 +514,6 @@ Overall, the heatmap highlights **clusters of correlated economic indicators** a
 
 
 ```{r}
-# Install if needed
-# install.packages("naniar")
-# install.packages("ggplot2")
 
 library(dplyr)
 library(ggplot2)
@@ -805,6 +803,41 @@ df <- df %>%
     previous_log         = log1p(previous)
   )
 
+df
+
+
+```
+
+## Handling Data Leakage: Excluding `duration`
+
+### Reasoning
+
+The variable `duration` represents the call length, which is only known after the client interaction is completed.  
+Because of this, it contains information that would not be available at prediction time — in other words, it leaks data from the future into the model.  
+
+If included, the model could "cheat" by using this post-event information, leading to artificially high accuracy that would not generalize to real-world predictions.
+
+---
+
+### Impact of Excluding `duration`
+
+By removing `duration` and its derived features (`duration_contact`, `duration_log`), we ensure:
+
+- **True predictive validity** – the model learns only from information available before the call.  
+- **Fair comparison across models** – prevents one model from gaining an unfair advantage.  
+- **Realistic performance metrics** – accuracy, recall, and F1 represent genuine predictive ability.
+
+---
+
+```{r}
+# --- Exclude duration (data leakage variable) ---
+df <- df %>% select(-duration, -duration_contact, -duration_log)
+
+df
+```
+
+
+```{r}
 # --- 4. Split target and predictors ---
 y <- df$y
 predictors <- df %>% select(-y)
@@ -904,140 +937,748 @@ ggplot(up_tbl, aes(x = Class, y = Count, fill = Class)) +
   theme_minimal()
 
 ```
+# PART III: Experimentation & Model Training {.tabset}
+
+This section fulfills the experimental requirements.  
+We will train and compare three algorithms — **Decision Tree**, **Random Forest**, and **AdaBoost** — using two experiments for each.
+
+Each experiment:
+1. Defines a **hypothesis/objective**
+2. Specifies **what changes** (hyperparameters, resampling, etc.)
+3. Keeps all other elements constant (data split, metrics)
+4. Evaluates results using **Accuracy**, **Precision**, **Recall**, **F1**, and **AUC**
+
+---
+## Verifying What Each Dataset Contains
+
+```{r}
+# Check how many rows and columns each dataset has
+dim(df)          # original cleaned dataset
+dim(X_imp)       # encoded + scaled predictors
+dim(df_smote)    # SMOTE-balanced dataset
+dim(up)          # Upsampled dataset
+
+```
+```{r}
+# Verify Class Balance in Each Dataset
+
+# Original dataset
+table(df$y)
+
+# After SMOTE
+table(df_smote$y)
+
+# After Upsampling
+table(up$y)
+
+# Check that df_smote has your predictors + label:
+
+names(df_smote)
+
+# The last column should be y (the factor label).
+
+# to verify column alignment (all predictors preserved)
+# empty vector (character(0)) means all columns match
+
+setdiff(names(X_imp), names(df_smote))
+
+
+```
+```{r}
+summary_tbl <- data.frame(
+  Dataset = c("Original df", "SMOTE df_smote", "Upsampled up"),
+  Rows = c(nrow(df), nrow(df_smote), nrow(up)),
+  Columns = c(ncol(df), ncol(df_smote), ncol(up)),
+  Positives = c(sum(df$y == "yes"),
+                sum(df_smote$y == "yes"),
+                sum(up$y == "yes")),
+  Negatives = c(sum(df$y == "no"),
+                sum(df_smote$y == "no"),
+                sum(up$y == "no"))
+)
+summary_tbl
+
+```
+
+
+
+## Setup and Common Utilities
+
+```{r message=FALSE, warning=FALSE}
+# Load necessary libraries
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(adabag)
+library(pROC)
+
+set.seed(123)
+
+```
+
+### Why Use `df` (and not `df_smote` or `up`)
+
+This is a subtle but important point in the modeling workflow.
+
+The dataset **`df`** represents the *original, clean data* that retains its natural class imbalance.  
+In contrast, **`df_smote`** and **`up`** are *artificially balanced versions* created during experimentation to address that imbalance.
+
+---
+
+#### Purpose of Each Dataset
+
+- **`df`** → used for *baseline experiments* to measure real-world model performance on imbalanced data.  
+- **`df_smote`** → used for *experiments with synthetic oversampling* (SMOTE), improving minority class representation.  
+- **`up`** → used for *experiments with simple upsampling*, balancing classes by duplicating minority samples.
+
+---
+
+#### Why Start with `df`
+
+We begin our modeling process using **`df`** because it provides a *true benchmark* of model performance under real-world conditions.  
+Subsequent experiments with **`df_smote`** and **`up`** allow comparison of how different balancing strategies affect key metrics such as accuracy, recall, and AUC.
 
 
 ```{r}
 # Split into Train/Test
 
+# Train/test split (stratified)
 set.seed(123)
-trainIndex <- createDataPartition(y, p = 0.7, list = FALSE)
-
-# Original
-X_train <- X_imp[trainIndex, ]
-X_test  <- X_imp[-trainIndex, ]
-y_train <- y[trainIndex]
-y_test  <- y[-trainIndex]
-
+idx <- createDataPartition(df$y, p = 0.7, list = FALSE)
+train <- df[idx, ]
+test  <- df[-idx, ]
 
 ```
+
+### Metric Computation Utility Function
+
+After splitting the dataset into training and testing subsets, the next step is to evaluate how well our models perform.  
+To ensure consistent and automated evaluation across all experiments, we define a reusable function called `compute_metrics()`.
+
+This function calculates key **classification performance metrics** such as accuracy, precision, recall, F1-score, and AUC (Area Under the ROC Curve).
 
 
 ```{r}
-# Train Logistic Regression (Original)
-
-model_orig <- glm(y_train ~ ., data = data.frame(y_train, X_train), family = binomial)
-pred_orig  <- predict(model_orig, newdata = X_test, type = "response")
-pred_class_orig <- ifelse(pred_orig > 0.5, "yes", "no")
-
-confusionMatrix(factor(pred_class_orig, levels=c("no","yes")), y_test)
+# Define a Metric Computation Utility Function
+# This custom function calculates key performance metrics for classification models.
+compute_metrics <- function(truth, pred_class, pred_prob_yes = NULL, positive = "yes") {
+  
+  # Generate a confusion matrix comparing predictions vs. actual labels
+  cm <- confusionMatrix(pred_class, truth, positive = positive)
+  
+  # Extract key metrics from the confusion matrix
+  acc <- as.numeric(cm$overall["Accuracy"])     # Overall correct predictions
+  prec <- as.numeric(cm$byClass["Precision"])   # Positive Predictive Value
+  rec  <- as.numeric(cm$byClass["Recall"])      # True Positive Rate (Sensitivity)
+  f1   <- as.numeric(cm$byClass["F1"])          # Harmonic mean of Precision & Recall
+  
+  # Initialize AUC (optional, only computed when probabilities are provided)
+  auc  <- NA_real_
+  
+  if (!is.null(pred_prob_yes)) {
+    # Convert factor truth labels into numeric format (1 for "yes", 0 for "no")
+    y_num <- ifelse(truth == positive, 1, 0)
+    
+    # Compute AUC using ROC curve (from pROC package)
+    try({
+      auc <- as.numeric(auc(roc(y_num, pred_prob_yes)))
+    }, silent = TRUE)
+  }
+  
+  # Return a tidy summary table
+  tibble(
+    Accuracy = round(acc, 4),
+    Precision = round(prec, 4),
+    Recall = round(rec, 4),
+    F1 = round(f1, 4),
+    AUC = round(auc, 4)
+  )
+}
 
 
 ```
+
+### Experiment Logger
+
+To manage multiple experiments in a structured way, we create a simple **experiment logging system**.  
+This setup ensures that every model run (Decision Tree, Random Forest, AdaBoost, etc.) is saved in a single table with its key performance metrics.  
+
+This makes it easier to:
+- Compare different algorithms,
+- Track hyperparameter changes,
+- Identify which configurations perform best.
+
+---
+
+#### Create an Empty Results Log and Define the Logging Function
+
+The following code creates an empty tibble (`results_log`) with columns for algorithm name, experiment description, and performance metrics.
+
+The `log_result()` function appends model results (performance metrics) and experiment details to the global results table.  
+This allows us to track multiple runs across different algorithms and configurations.
 
 
 ```{r}
-# Train Logistic Regression (SMOTE)
+# --- Experiment Logger Setup ---
 
-# Split SMOTE data
-set.seed(123)
-trainIndex_smote <- createDataPartition(df_smote$y, p = 0.7, list = FALSE)
+# Create an empty results log to store experiment outcomes
+results_log <- tibble(
+  Algorithm = character(),
+  Experiment = character(),
+  What_Changed = character(),
+  Accuracy = double(),
+  Precision = double(),
+  Recall = double(),
+  F1 = double(),
+  AUC = double()
+)
 
-train_smote <- df_smote[trainIndex_smote, ]
-test_smote  <- df_smote[-trainIndex_smote, ]
-
-model_smote <- glm(y ~ ., data = train_smote, family = binomial)
-pred_smote  <- predict(model_smote, newdata = test_smote, type = "response")
-pred_class_smote <- ifelse(pred_smote > 0.5, "yes", "no")
-
-confusionMatrix(factor(pred_class_smote, levels=c("no","yes")), test_smote$y)
+# Define function to record experiment results
+log_result <- function(alg, exp_name, change_desc, metrics_tbl) {
+  
+  # Create a new row combining model info and metrics
+  row <- tibble(
+    Algorithm = alg,
+    Experiment = exp_name,
+    What_Changed = change_desc
+  ) %>%
+    bind_cols(metrics_tbl)
+  
+  # Add to global results log
+  assign(
+    "results_log",
+    bind_rows(get("results_log", .GlobalEnv), row),
+    envir = .GlobalEnv
+  )
+}
 
 
 ```
+
+## Experiment 1A – Baseline Decision Tree
+
+### Objective
+The purpose of this experiment is to establish a **baseline model** using a simple **Decision Tree classifier**.  
+This provides a reference point for performance before applying any tuning, balancing, or advanced ensemble techniques.  
+
+By using the original dataset (`df`), we simulate real-world conditions — including the class imbalance problem — to see how the model performs without any special adjustments.
+
+---
+
+### Experimental Setup
+
+| Component | Description |
+|------------|--------------|
+| **Algorithm** | Decision Tree (`rpart` package) |
+| **Dataset** | Original imbalanced dataset (`df`) |
+| **Train/Test Split** | 70% training, 30% testing |
+| **Parameters** | Default tree depth and complexity |
+| **Evaluation Metrics** | Accuracy, Precision, Recall, F1-score, AUC |
+| **Goal** | Understand baseline performance and identify limitations (e.g., bias toward majority class). |
+
+---
+
+### Baseline Decision Tree Model
 
 
 ```{r}
-# Train Logistic Regression (Upsampled)
+# Load required libraries
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(pROC)
+library(dplyr)
+library(tibble)
 
-# Split Upsampled data
+# --- Train Baseline Decision Tree ---
 set.seed(123)
-trainIndex_up <- createDataPartition(up$y, p = 0.7, list = FALSE)
+model_dt_base <- rpart(y ~ ., data = train, method = "class", control = rpart.control(cp = 0.01))
 
-train_up <- up[trainIndex_up, ]
-test_up  <- up[-trainIndex_up, ]
+# --- Make Predictions ---
+pred_dt_base_prob  <- predict(model_dt_base, newdata = test, type = "prob")[, "yes"]
+pred_dt_base_class <- predict(model_dt_base, newdata = test, type = "class")
 
-model_up <- glm(y ~ ., data = train_up, family = binomial)
-pred_up  <- predict(model_up, newdata = test_up, type = "response")
-pred_class_up <- ifelse(pred_up > 0.5, "yes", "no")
+# --- Evaluate Model Performance ---
+m_dt_base <- compute_metrics(test$y, pred_dt_base_class, pred_dt_base_prob)
+m_dt_base
 
-confusionMatrix(factor(pred_class_up, levels=c("no","yes")), test_up$y)
+# --- Log Experiment Results ---
+log_result(
+  alg = "Decision Tree",
+  exp_name = "DT-1A Baseline",
+  change_desc = "Baseline Decision Tree on original dataset (no tuning, imbalanced data)",
+  metrics_tbl = m_dt_base
+)
+
+# Optional: visualize the decision tree
+rpart.plot(model_dt_base, main = "Decision Tree - Baseline Model", extra = 106)
+
+```
+## Interpretation of Experiment 1A – Baseline Decision Tree (Original Data)
+
+### Summary of Results
+
+| Metric | Value |
+|:--------|:------:|
+| **Accuracy** | 0.8988 |
+| **Precision** | 0.7130 |
+| **Recall** | 0.1697 |
+| **F1-Score** | 0.2741 |
+| **AUC** | 0.7082 |
+
+---
+
+### Interpretation
+
+The baseline Decision Tree model trained on the **original, imbalanced dataset** achieved an overall **accuracy of 89.9 %**, which at first glance seems excellent.  
+However, a closer look at the other metrics reveals a common issue with imbalanced data — the model is **biased toward the majority class ("no")**.
+
+**Detailed insights:**
+
+- **Accuracy (0.8988):**  
+  The model correctly predicts the majority of cases, but this high accuracy is misleading.  
+  Since most clients did not subscribe, the model can appear accurate simply by predicting “no” most of the time.
+
+- **Precision (0.7130):**  
+  When the model predicts “yes,” it is correct about 71 % of the time.  
+  This means that although false positives are not extremely high, the model still misses many true positives.
+
+- **Recall (0.1697):**  
+  Critically low — the model identifies only **17 %** of the actual subscribers.  
+  This shows the model fails to recognize most of the “yes” cases, which is unacceptable for marketing prediction where capturing potential customers is the goal.
+
+- **F1-Score (0.2741):**  
+  The harmonic mean of precision and recall reflects an overall weak balance.  
+  The model performs poorly on the minority class despite reasonable precision.
+
+- **AUC (0.7082):**  
+  Although slightly above 0.7 (indicating some discriminatory ability), the relatively low recall suggests that the model is not effectively separating positive and negative classes.
+
+---
+
+### Overall Conclusion
+
+The **baseline Decision Tree model** performs well in terms of **accuracy** but poorly in identifying the actual customers who subscribed to a term deposit.  
+This imbalance indicates that the model is **overly conservative**, favoring the majority “no” predictions.  
+
+In a real-world marketing context, this model would **miss most potential subscribers**, which is costly for a business trying to target interested clients.  
+
+Therefore, these results clearly justify the need for the next experiment (1B), where we apply **SMOTE balancing and parameter tuning** to increase recall and overall predictive fairness between classes.
+
+
+## Experiment 1B – Tuned Decision Tree (SMOTE Data)
+
+### Objective
+
+The purpose of this experiment is to **improve the Decision Tree model** by addressing the **class imbalance problem** observed in the baseline experiment (1A).  
+In the baseline model, the classifier tended to predict the majority class (“no”) far more often, leading to poor **recall** for the minority class (“yes”).  
+
+To mitigate this issue, we apply **SMOTE (Synthetic Minority Oversampling Technique)** to create a balanced training dataset before model training.  
+This experiment also introduces **basic parameter tuning** to control the complexity of the tree and prevent overfitting.
+
+---
+
+### Experiment Setup
+
+| Component | Description |
+|------------|--------------|
+| **Algorithm** | Decision Tree (`rpart` package) |
+| **Dataset** | SMOTE-balanced dataset (`df_smote`) |
+| **Train/Test Split** | 70% training, 30% testing |
+| **Parameters Tuned** | `cp` (complexity parameter), `maxdepth` (tree depth) |
+| **Evaluation Metrics** | Accuracy, Precision, Recall, F1-score, AUC |
+| **Goal** | Improve model’s ability to correctly identify positive (“yes”) cases and generalize better. |
+
+---
+
+### Why This Step Matters
+
+The SMOTE technique synthesizes new examples of the minority class by interpolating between existing samples.  
+This helps the model **learn the decision boundaries for “yes” more effectively**, rather than being dominated by “no” outcomes.
+
+By also tuning the tree’s complexity, we ensure that the model:
+- Learns meaningful patterns (not noise).  
+- Achieves better recall and AUC while maintaining reasonable precision.
+
+---
+
+### Tuned Decision Tree with SMOTE
+
+```{r}
+# --- Load Required Packages ---
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(pROC)
+library(dplyr)
+library(tibble)
+
+# --- Split the SMOTE-balanced data into Train/Test ---
+set.seed(123)
+idx_smote <- createDataPartition(df_smote$y, p = 0.7, list = FALSE)
+train_smote <- df_smote[idx_smote, ]
+test_smote  <- df_smote[-idx_smote, ]
+
+# --- Train Tuned Decision Tree ---
+set.seed(123)
+model_dt_tuned <- rpart(
+  y ~ ., 
+  data = train_smote, 
+  method = "class",
+  control = rpart.control(cp = 0.005, maxdepth = 6)  # tuning parameters
+)
+
+# --- Make Predictions ---
+pred_dt_tuned_prob  <- predict(model_dt_tuned, newdata = test_smote, type = "prob")[, "yes"]
+pred_dt_tuned_class <- predict(model_dt_tuned, newdata = test_smote, type = "class")
+
+# --- Evaluate Model Performance ---
+m_dt_tuned <- compute_metrics(test_smote$y, pred_dt_tuned_class, pred_dt_tuned_prob)
+m_dt_tuned
+
+# --- Log Experiment Results ---
+log_result(
+  alg = "Decision Tree",
+  exp_name = "DT-1B Tuned",
+  change_desc = "Used SMOTE-balanced data with cp=0.005 and maxdepth=6",
+  metrics_tbl = m_dt_tuned
+)
+
+# Optional: visualize tuned tree
+rpart.plot(model_dt_tuned, main = "Decision Tree – Tuned Model (SMOTE Data)", extra = 106)
+
+```
+## Interpretation of Experiment 1B – Tuned Decision Tree (SMOTE Data)
+
+### Summary of Results
+
+| Metric | Value |
+|:--------|:------:|
+| **Accuracy** | 0.8117 |
+| **Precision** | 0.8580 |
+| **Recall** | 0.7187 |
+| **F1-Score** | 0.7822 |
+| **AUC** | 0.8427 |
+
+---
+
+### Interpretation
+
+After applying **SMOTE balancing** and **parameter tuning** (`cp = 0.005`, `maxdepth = 6`), the Decision Tree model shows a **dramatic performance improvement** compared to the baseline model trained on the imbalanced data.  
+
+**Detailed insights:**
+
+- **Accuracy (0.8117):**  
+  The overall accuracy dropped slightly from ~0.90 in the baseline to ~0.81.  
+  This is expected and not a concern — the model now treats both classes fairly instead of over-predicting “no.”  
+
+- **Precision (0.8580):**  
+  When the model predicts “yes,” it is correct **86 % of the time**.  
+  This high precision means false positives are rare — the model is confident when it flags a potential subscriber.  
+
+- **Recall (0.7187):**  
+  A major improvement from the baseline recall of 0.17.  
+  The model now correctly identifies **over 71 %** of all actual subscribers.  
+  This indicates that balancing the data helped the model learn to recognize “yes” cases much more effectively.  
+
+- **F1-Score (0.7822):**  
+  A strong overall balance between precision and recall.  
+  The F1-score has nearly **tripled** compared to the baseline, showing robust and balanced predictive power.  
+
+- **AUC (0.8427):**  
+  A clear jump from ~0.71 to ~0.84.  
+  The tuned model now exhibits excellent discrimination between subscribers (“yes”) and non-subscribers (“no”), a sign of much better model calibration.  
+
+---
+
+### Overall Conclusion
+
+This experiment successfully demonstrates that **handling class imbalance with SMOTE** and **fine-tuning model complexity** can dramatically enhance performance.  
+The Decision Tree now achieves:
+
+- High **precision** → reliable positive predictions,  
+- Strong **recall** → captures most actual subscribers,  
+- High **AUC** → effective class separation.  
+
+While overall accuracy slightly decreased, this trade-off is beneficial: the model is now **much more useful for real-world marketing**, where identifying potential customers (recall) is far more valuable than maintaining inflated accuracy driven by the majority class.
+
+In summary, **Experiment 1B transforms the Decision Tree into a balanced, high-recall, and high-AUC model** that provides realistic, actionable predictions for term-deposit subscription campaigns.
+
+
+## Experiment 2A – Baseline Random Forest (Default Parameters)
+
+### Purpose
+This experiment establishes a **baseline performance** for the Random Forest algorithm using the original, imbalanced dataset.  
+The goal is to observe how ensemble methods compare to a single Decision Tree without any class balancing or tuning.
+
+### Methodology
+- **Data:** Original (df) with median imputation and scaling  
+- **Algorithm:** Random Forest (default hyperparameters)  
+- **Training/Test Split:** 70/30 stratified  
+- **Cross-Validation:** None (baseline)  
+- **Metric:** ROC/AUC for primary comparison  
+
+### Expected Outcome
+Random Forest should outperform the single Decision Tree in **AUC** and **stability**, but **recall** for the minority class ("yes") may remain low due to class imbalance.
+
+
+```{r}
+# -----------------------------------------------------------
+# Experiment 2A – Baseline Random Forest (Default Parameters)
+# -----------------------------------------------------------
+
+library(caret)
+library(randomForest)
+library(pROC)
+library(dplyr)
+
+# ---  Prepare Data ---
+# Instead of removing missing values, we will impute them automatically
+
+# Create preprocessing object for median/mode imputation + scaling
+pre_rf <- preProcess(train, method = c("medianImpute", "center", "scale"))
+
+# Apply imputation and scaling to both train and test
+train_rf <- predict(pre_rf, newdata = train)
+test_rf  <- predict(pre_rf, newdata = test)
+
+# ---  Define Control Parameters (no CV for baseline) ---
+ctrl_rf_base <- trainControl(
+  method = "none",          # no cross-validation
+  classProbs = TRUE,        # needed for ROC/AUC
+  summaryFunction = twoClassSummary
+)
+
+# ---  Train Baseline Random Forest ---
+set.seed(123)
+model_rf_base <- train(
+  y ~ ., 
+  data = train_rf,
+  method = "rf",
+  trControl = ctrl_rf_base,
+  metric = "ROC"
+)
+
+# ---  Predict on Test Data ---
+pred_rf_base_prob  <- predict(model_rf_base, newdata = test_rf, type = "prob")[, "yes"]
+pred_rf_base_class <- ifelse(pred_rf_base_prob > 0.5, "yes", "no") %>% 
+  factor(levels = c("no", "yes"))
+
+# ---  Evaluate Metrics ---
+m_rf_base <- compute_metrics(test_rf$y, pred_rf_base_class, pred_rf_base_prob)
+m_rf_base
+
+# ---  Log Results ---
+log_result(
+  alg = "Random Forest",
+  exp_name = "RF-2A Baseline",
+  change_desc = "Default parameters, median imputation (no CV)",
+  metrics_tbl = m_rf_base
+)
+
+# View results log
+results_log
+
 
 ```
 
-## Model Performance Comparison
+## Comparative Interpretation of Experiments 1A, 1B, and 2A
 
-- **Original dataset**  
-  - Produces high overall accuracy.  
-  - However, recall for `"yes"` is poor because the model predicts `"no"` most of the time due to class imbalance.
+### Summary of Results
 
-- **SMOTE (Synthetic Minority Oversampling Technique)**  
-  - Recall for `"yes"` improves since synthetic examples balance the dataset.  
-  - Provides more diverse synthetic cases compared to simple duplication.
-
-- **Upsampling**  
-  - Recall also improves by balancing the dataset.  
-  - However, it can lead to overfitting since it duplicates minority class examples instead of creating new ones.
-
-
-
-# PART III: Algorithm Selection {.tabset}  
-
-### Business Context  
-- **Goal:** predict subscription (y = yes/no).  
-- **Size:** ~41k records, mixed variables.  
-- **Challenge:** Class imbalance (~11% yes).  
-- **Need:** Balance interpretability and predictive power.  
-
-### Candidate Algorithms  
-
-**1. Logistic Regression**  
-- Pros: interpretable coefficients, probability outputs, efficient.  
-- Cons: assumes linear log-odds, requires preprocessing, may miss nonlinearities.  
-
-**2. Decision Tree**  
-- Pros: handles numeric/categorical, captures interactions, intuitive rules.  
-- Cons: prone to overfitting, less stable, lower accuracy than ensembles.  
-
-**3. Naïve Bayes (secondary)**  
-- Pros: fast, works with categorical data, probabilistic.  
-- Cons: assumes independence, less accurate on structured business data.  
+| Algorithm | Experiment | What Changed | Accuracy | Precision | Recall | F1 | AUC |
+|:-----------|:------------|:--------------|----------:|-----------:|---------:|---------:|---------:|
+| **Decision Tree** | DT-1A Baseline | Baseline Decision Tree on original dataset (no tuning, imbalanced data) | 0.8988 | 0.7130 | 0.1697 | 0.2741 | 0.7082 |
+| **Decision Tree** | DT-1B Tuned | Used SMOTE-balanced data with `cp = 0.005` and `maxdepth = 6` | 0.8117 | 0.8580 | 0.7187 | 0.7822 | 0.8427 |
+| **Random Forest** | RF-2A Baseline | Default parameters, median imputation (no CV) | 0.8986 | 0.6139 | 0.2674 | 0.3726 | 0.7870 |
 
 ---
 
-### Recommended Algorithm  
-- **Primary:** Logistic Regression → interpretability + regulatory alignment.  
-- **Secondary:** Decision Tree → captures nonlinear patterns, generates actionable rules.  
+### Interpretation
+
+The three experiments demonstrate clear progress in model performance and insight into how **data balancing** and **ensemble learning** influence results.
+
+#### **Decision Tree – Baseline (1A)**
+- Achieved **very high accuracy (0.90)** but extremely **low recall (0.17)**.  
+- This means the model correctly predicted most “no” cases but missed most actual “yes” (term deposit) customers.  
+- The model is **biased toward the majority class**, typical for imbalanced datasets.  
+- **AUC (0.71)** suggests modest class discrimination.
+
+*Conclusion:* Model is fast and interpretable, but ineffective for identifying potential subscribers.
 
 ---
 
-### Responses to Questions  
+#### **Decision Tree – Tuned with SMOTE (1B)**
+- After applying **SMOTE** (synthetic balancing) and **tuning**, recall jumped from **0.17 → 0.72**, and AUC improved to **0.84**.  
+- Although accuracy dropped slightly (0.81), this is acceptable because the model became **more balanced and business-relevant**.  
+- Precision (0.86) and F1-score (0.78) indicate strong overall performance.  
 
-1. **Are there labels?**  
-   Yes → y (yes/no). It’s supervised classification.  
-
-2. **How does algorithm choice relate to data?**  
-   Large, imbalanced dataset with mixed variables → logistic regression + decision tree fit well.  
-
-3. **What if dataset < 1,000 records?**  
-   Prefer simpler models (logistic regression, LDA, Naïve Bayes). Decision trees may be unstable.  
+*Conclusion:* The tuned Decision Tree captures far more actual positives and provides a solid balance between precision and recall — ideal for targeted marketing.
 
 ---
 
-### Justification  
-1. **Data characteristics:** supervised, binary classification with imbalance → logistic regression fits well.  
-2. **Problem type:** supervised learning, classification.  
-3. **Business needs:** interpretability and actionable insights → logistic regression + decision tree.  
+#### **Random Forest – Baseline (2A)**
+- Uses ensemble learning to reduce overfitting and improve class separation.  
+- Accuracy remains high (**0.90**), showing good stability.  
+- AUC increases to **0.79**, reflecting better ability to distinguish classes compared to the single Decision Tree baseline.  
+- However, recall (0.27) is still low, meaning it still misses most “yes” customers due to class imbalance.
+
+*Conclusion:* The Random Forest baseline performs better overall but still requires **balancing and tuning** to improve recall.  
+This sets the stage for **Experiment 2B**, which will apply **SMOTE** and **cross-validation** to boost both **AUC** and **recall**.
 
 ---
 
-### Final Answer  
-I recommend **Logistic Regression** as the primary model for interpretability and alignment with business context, with **Decision Trees** as a complementary method to capture nonlinear patterns.  
+### Key Insights
+
+| Observation | Explanation |
+|--------------|--------------|
+| **Accuracy is high for all models** | Because “no” cases dominate, even weak models appear accurate. |
+| **SMOTE significantly boosts recall** | Balancing allows the model to learn from more “yes” examples. |
+| **Random Forest improves AUC** | Ensemble averaging enhances class separation, even without tuning. |
+| **Trade-off between accuracy and recall** | Improving minority-class performance naturally reduces overall accuracy slightly. |
+
+---
+
+### Overall Conclusion
+
+- **Decision Tree (1B)** and **Random Forest (2A)** both outperform the simple baseline tree.  
+- SMOTE balancing yields the **most business-relevant improvement** — higher recall and F1-score.  
+- The next step (Experiment 2B) should combine both strengths:  
+  **Random Forest’s ensemble stability** + **SMOTE’s balanced learning** + **cross-validation for tuning.**
+     
+  
+## Experiment 2B – Tuned Random Forest (Cross-Validation)
+
+### Objective
+This experiment aims to enhance the baseline Random Forest model’s ability to correctly identify clients who will subscribe to a term deposit.  
+By tuning key hyperparameters and applying cross-validation, the goal is to improve the model’s **AUC** and **Recall**, thereby increasing its effectiveness in detecting minority (positive) cases.
+
+---
+
+### Methodology
+- **Dataset:** Same as in Experiment 2A, with median imputation and feature scaling applied.  
+- **Algorithm:** Random Forest implemented through the `caret` package.  
+- **Validation Strategy:** 5-fold cross-validation to ensure robust performance estimation.  
+- **Hyperparameters Tuned:**  
+  - `mtry = {3, 5, 7}` → number of predictors randomly selected at each split.  
+  - `ntree = 500` → number of trees grown in the ensemble.  
+- **Primary Evaluation Metric:** AUC (Area Under the ROC Curve).  
+- **Secondary Metrics:** Accuracy, Precision, Recall, and F1-score for overall model assessment.
+
+---
+
+### Expected Outcome
+Through hyperparameter tuning and cross-validation, the model is expected to achieve:
+- Higher **AUC**, indicating improved ability to distinguish between “yes” and “no” clients.  
+- Increased **Recall**, capturing a larger proportion of actual positive cases.  
+- A slight reduction in **Accuracy**, which is acceptable given the trade-off for better balance between classes.
+
+---
+
+
+```{r}
+# -----------------------------------------------------------
+# Experiment 2B – Tuned Random Forest (Cross-Validation, Faster Version)
+# -----------------------------------------------------------
+
+library(caret)
+library(randomForest)
+library(pROC)
+library(dplyr)
+library(doParallel)
+
+# --- Parallel Setup ---
+cl <- makeCluster(parallel::detectCores() - 1)
+registerDoParallel(cl)
+
+# --- Data Preprocessing ---
+pre_rf_tuned <- preProcess(train, method = c("medianImpute", "center", "scale"))
+train_rf_tuned <- predict(pre_rf_tuned, newdata = train)
+test_rf_tuned  <- predict(pre_rf_tuned, newdata = test)
+
+# --- Cross-Validation ---
+ctrl_rf_tuned <- trainControl(
+  method = "cv",
+  number = 3,                  # reduced from 5 to 3 folds
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+
+# --- Tuning Grid ---
+grid_rf <- expand.grid(mtry = c(3, 5))   # reduced grid for speed
+
+# --- Model Training ---
+set.seed(123)
+model_rf_tuned <- train(
+  y ~ ., 
+  data = train_rf_tuned,
+  method = "rf",
+  trControl = ctrl_rf_tuned,
+  tuneGrid = grid_rf,
+  ntree = 150,                 # reduced from 500 to 150 trees
+  metric = "ROC"
+)
+
+# --- Prediction & Evaluation ---
+pred_rf_tuned_prob  <- predict(model_rf_tuned, newdata = test_rf_tuned, type = "prob")[, "yes"]
+pred_rf_tuned_class <- ifelse(pred_rf_tuned_prob > 0.5, "yes", "no") %>%
+  factor(levels = c("no", "yes"))
+
+m_rf_tuned <- compute_metrics(test_rf_tuned$y, pred_rf_tuned_class, pred_rf_tuned_prob)
+m_rf_tuned
+
+# --- Log Result ---
+log_result(
+  alg = "Random Forest",
+  exp_name = "RF-2B Tuned (Optimized)",
+  change_desc = "3-fold CV, mtry={3,5}, ntree=150 (optimized runtime)",
+  metrics_tbl = m_rf_tuned
+)
+
+# Stop parallel cluster
+stopCluster(cl)
+
+# View log
+results_log
+
+
+```
+## Interpretation of Experiment 2B – Tuned Random Forest (Cross-Validation)
+
+| Metric | Value |
+|:--------|:------:|
+| **Accuracy** | 0.8995 |
+| **Precision** | 0.6410 |
+| **Recall** | 0.2451 |
+| **F1-Score** | 0.3547 |
+| **AUC** | 0.7864 |
+
+---
+
+### Interpretation
+
+The tuned Random Forest model (Experiment 2B) demonstrates performance similar to the baseline Random Forest (Experiment 2A), with only marginal improvements in precision but a slight decrease in recall.  
+
+- **Accuracy (0.8995)** remains almost unchanged from the baseline (0.8986), suggesting the overall classification ability is stable.  
+- **Precision (0.6410)** increased modestly, meaning that the model’s positive predictions are slightly more reliable.  
+- **Recall (0.2451)** decreased compared to 2A (0.2674), indicating that the tuned model identifies fewer actual positive cases.  
+- **F1-Score (0.3547)** shows a minor decline, reflecting the trade-off between higher precision and lower recall.  
+- **AUC (0.7864)** remains consistent with the baseline (0.7870), suggesting that tuning did not substantially change the model’s ability to distinguish between classes.
+
+---
+
+### Overall Assessment
+
+Despite implementing cross-validation and parameter tuning (`mtry={3,5}`, `ntree=150`), the tuned Random Forest did **not yield significant improvements** over the baseline.  
+This result indicates that the default Random Forest configuration was already well-calibrated for this dataset.  
+
+Future improvements may focus on:
+- Applying **SMOTE or class weights** within the Random Forest to better handle class imbalance.  
+- Expanding the tuning grid (e.g., exploring higher `mtry` or deeper trees).  
+- Testing **alternative ensemble methods** such as AdaBoost or Gradient Boosting for enhanced recall and minority class detection.
+
+---
+
+### Conclusion
+Experiment 2B confirms that cross-validation and modest hyperparameter tuning alone do not guarantee performance improvement.  
+In highly imbalanced datasets like this, further balancing or algorithmic adjustments may be required to achieve meaningful gains in recall and AUC.
