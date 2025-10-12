@@ -1,6 +1,6 @@
 ---
 title: "Machine Learning Experimentation and Model Evaluation Essay"
-author: "Your Name"
+author: "Mubashira Qari"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
