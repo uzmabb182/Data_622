@@ -1954,3 +1954,81 @@ The Precision dropped marginally, suggesting that the model’s broader detectio
 
 Overall, the **tuning and preprocessing improvements** (handling of factor levels, consistent probability dimensions, and runtime optimization) made the model **more stable and reproducible**, albeit with a **trade-off between precision and recall**.  
 These results highlight AdaBoost’s sensitivity to data representation and parameter tuning — small adjustments can impact how well the ensemble balances accuracy and minority class detection.
+
+# Comparative Interpretation of All Experiments
+
+## Overview
+
+This section summarizes the performance and insights derived from six machine learning experiments conducted using **Decision Tree**, **Random Forest**, and **AdaBoost** algorithms.  
+Each algorithm was evaluated under two conditions:
+1. **Baseline model** – trained with default parameters on the original (imbalanced) dataset.  
+2. **Tuned model** – trained with enhanced configurations, sampling strategies, and hyperparameter tuning to address class imbalance and improve predictive performance.
+
+The primary evaluation metrics were **Accuracy**, **Precision**, **Recall**, **F1-score**, and **AUC**.
+
+---
+
+## Summary of Results
+
+| Algorithm      | Experiment                | What Changed                                                              | Accuracy | Precision | Recall  | F1     | AUC   |
+|----------------|---------------------------|---------------------------------------------------------------------------|-----------|------------|---------|--------|-------|
+| **Decision Tree** | DT-1A Baseline | Baseline Decision Tree on imbalanced data (no tuning) | **0.8988** | 0.7130 | 0.1697 | 0.2741 | 0.7082 |
+| **Decision Tree** | DT-1B Tuned | Used SMOTE-balanced data with cp=0.005 and maxdepth=6 | 0.8117 | **0.8580** | **0.7187** | **0.7822** | **0.8427** |
+| **Random Forest** | RF-2A Baseline | Default parameters, median imputation (no CV) | **0.8986** | 0.6139 | 0.2674 | 0.3726 | 0.7870 |
+| **Random Forest** | RF-2B Tuned (Optimized) | 3-fold CV, tuned mtry={3,5}, ntree=150 (optimized runtime) | 0.8995 | **0.6410** | 0.2451 | 0.3547 | 0.7864 |
+| **AdaBoost** | AB-3A Baseline (Fixed) | Baseline AdaBoost using `adabag::boosting` (mfinal=30, boos=TRUE) | **0.9003** | **0.6970** | 0.2035 | 0.3150 | **0.8071** |
+| **AdaBoost** | AB-3B Tuned (Final Stable) | Handled factor alignment and missing probability names, optimized runtime | 0.8973 | 0.5997 | **0.2638** | **0.3665** | 0.7761 |
+
+---
+
+## Comparative Analysis
+
+### 1. Decision Tree
+The **baseline Decision Tree (DT-1A)** performed well in terms of accuracy but showed **very poor Recall (0.17)**, highlighting its bias toward the majority class.  
+After applying **SMOTE balancing and parameter tuning (DT-1B)**, the model demonstrated a **substantial improvement in Recall (+0.55)** and **AUC (+0.13)**, indicating better minority-class recognition.  
+While accuracy decreased slightly (from 0.89 to 0.81), this is an acceptable trade-off for improved sensitivity and fairness across classes.
+
+**Key takeaway:** SMOTE and hyperparameter tuning significantly improved the Decision Tree’s ability to detect positive outcomes, making it much more balanced and effective.
+
+---
+
+### 2. Random Forest
+The **baseline Random Forest (RF-2A)** achieved strong accuracy (0.8986) and a reasonable AUC (0.7870), outperforming the baseline Decision Tree in robustness but still showing class imbalance effects (low Recall).  
+After **cross-validation and tuning (RF-2B)**, the model’s performance metrics remained similar overall, with a small gain in Precision (+0.03) but a negligible change in Recall.  
+This suggests that Random Forest is already quite stable at default settings and less sensitive to moderate tuning adjustments.
+
+**Key takeaway:** Random Forest provides consistent and reliable performance with minimal tuning, showing strong generalization but only moderate improvement in minority class detection.
+
+---
+
+### 3. AdaBoost
+The **baseline AdaBoost (AB-3A)** yielded the **highest overall accuracy (0.9003)** and a **strong AUC (0.8071)** among all models, indicating good discriminative power.  
+However, Recall remained relatively low (0.2035), showing a tendency to favor precision over sensitivity.  
+The **tuned AdaBoost model (AB-3B)** introduced stability fixes and runtime optimizations. While AUC slightly decreased to 0.7761, Recall improved (+0.06), showing better balance between identifying positives and maintaining overall performance.
+
+**Key takeaway:** AdaBoost is highly accurate and robust but sensitive to data formatting. After tuning, it achieved a better trade-off between Recall and Precision, with improved reliability and runtime efficiency.
+
+---
+
+## Overall Insights and Model Comparison
+
+| Metric | Best Algorithm | Notes |
+|--------|----------------|-------|
+| **Accuracy** | AdaBoost (AB-3A) | Highest accuracy across all experiments (0.9003) |
+| **Precision** | Decision Tree (DT-1B) | Very high precision (0.858) after SMOTE tuning |
+| **Recall** | Decision Tree (DT-1B) | Best recall (0.7187) indicating strong minority detection |
+| **F1-score** | Decision Tree (DT-1B) | Best harmonic balance (0.7822) |
+| **AUC** | Decision Tree (DT-1B) | Best class separation (0.8427) |
+
+---
+
+### Final Conclusion
+
+Across all six experiments:
+- The **Decision Tree (DT-1B)** emerged as the best performer in **balanced learning** after SMOTE and tuning, achieving the highest Recall, F1, and AUC.
+- The **Random Forest** demonstrated **strong consistency and generalization**, performing reliably even with minimal tuning.
+- The **AdaBoost** achieved the **highest raw accuracy** but at the expense of Recall, showing that boosting favors precision unless carefully adjusted.
+
+> In conclusion, **SMOTE-balanced and tuned Decision Tree** provides the most interpretable and well-balanced classification performance,  
+> while **Random Forest** and **AdaBoost** offer strong accuracy and robustness for real-world deployment scenarios.
+
