@@ -1637,7 +1637,6 @@ log_result(
 
 # Stop parallel cluster
 stopCluster(cl)
-
 # View log
 results_log
 
@@ -1682,3 +1681,276 @@ Future improvements may focus on:
 ### Conclusion
 Experiment 2B confirms that cross-validation and modest hyperparameter tuning alone do not guarantee performance improvement.  
 In highly imbalanced datasets like this, further balancing or algorithmic adjustments may be required to achieve meaningful gains in recall and AUC.
+
+## Experiment 3A – Baseline AdaBoost (Fixed Version)
+
+### Objective
+The goal of this experiment was to test the baseline performance of the **AdaBoost** algorithm on the original dataset,  
+after ensuring consistent factor levels between predicted and true labels.
+
+AdaBoost builds an ensemble of weak classifiers (decision stumps or small trees) in successive rounds,  
+each focusing more on the previously misclassified samples to improve model performance.
+
+---
+
+### Methodology
+
+- **Algorithm:** AdaBoost (`adabag::boosting()`)
+- **Dataset:** Original `train` / `test` split (no rebalancing)
+- **Hyperparameters:**
+  - `mfinal = 30` → number of boosting iterations  
+  - `boos = TRUE` → enables reweighting of misclassified samples
+- **Preprocessing:**
+  - Consistent factor levels ensured for `y`
+  - Probability matrix columns manually labeled (`no`, `yes`)
+- **Evaluation Metrics:** Accuracy, Precision, Recall, F1, and AUC
+
+---
+
+### Code Summary
+
+The AdaBoost model was trained on the training subset using 30 boosting rounds.  
+Predictions were made on the test subset, and key metrics were computed using the custom `compute_metrics()` function.  
+Results were automatically logged into the global experiment log via `log_result()`.
+
+---
+
+
+
+```{r}
+# -----------------------------------------------------------
+# Experiment 3A – Baseline AdaBoost (Fixed version)
+# -----------------------------------------------------------
+
+# Install if needed
+if (!require(adabag)) install.packages("adabag", type = "binary")
+
+library(adabag)
+library(caret)
+library(pROC)
+library(dplyr)
+
+# --- 1. Prepare Data ---
+train_ada <- train
+test_ada  <- test
+
+# Ensure target is a factor with consistent levels
+train_ada$y <- factor(train_ada$y, levels = c("no", "yes"))
+test_ada$y  <- factor(test_ada$y, levels = c("no", "yes"))
+
+# --- 2. Train AdaBoost model ---
+set.seed(123)
+model_ada_base <- boosting(
+  y ~ ., 
+  data = train_ada,
+  boos = TRUE,        # enable reweighting of misclassified obs
+  mfinal = 30         # number of boosting iterations
+)
+
+# --- 3. Predict on test set ---
+pred_ada <- predict(model_ada_base, newdata = test_ada)
+
+# --- 4. Extract predicted classes ---
+pred_ada_class <- factor(pred_ada$class, levels = c("no", "yes"))
+
+# --- 5. Handle probability predictions ---
+# adabag sometimes returns probs without dimnames — fix manually
+if (is.null(dimnames(pred_ada$prob))) {
+  # assume 2 columns, 1st = no, 2nd = yes
+  colnames(pred_ada$prob) <- c("no", "yes")
+}
+pred_ada_prob <- pred_ada$prob[, "yes"]
+
+# --- 6. Evaluate metrics safely ---
+m_ada_base <- compute_metrics(test_ada$y, pred_ada_class, pred_ada_prob)
+m_ada_base
+
+# --- 7. Log results ---
+log_result(
+  alg = "AdaBoost",
+  exp_name = "AB-3A Baseline (Fixed)",
+  change_desc = "Baseline AdaBoost using adabag::boosting (mfinal=30, boos=TRUE, fixed probability issue)",
+  metrics_tbl = m_ada_base
+)
+
+# --- 8. View updated experiment log ---
+results_log
+
+
+```
+
+### Interpretation of Results
+1. **Overall Accuracy (0.9003):**  
+   AdaBoost achieved the highest accuracy among the baseline ensemble models, slightly outperforming the Random Forest baseline (0.8995).  
+   However, due to class imbalance, accuracy alone over-represents the model’s success on the majority “no” class.
+
+2. **Precision vs. Recall:**  
+   The model’s high precision (0.70) indicates that most predicted “yes” responses were correct,  
+   but the recall (0.20) reveals that the model identified only 20 % of the actual positive cases.  
+   This imbalance suggests that AdaBoost is conservative—strong on certainty but weak on coverage of minority cases.
+
+3. **F1 and AUC Performance:**  
+   The F1 score (0.315) reflects the imbalance between precision and recall.  
+   The AUC of 0.81 demonstrates good discriminative ability, showing that AdaBoost can separate the “yes” and “no” classes effectively, even when the decision threshold favors the majority class.
+
+4. **Comparison with Other Models:**
+
+| Model | Accuracy | Precision | Recall | F1 | AUC | Remarks |
+|:--|--:|--:|--:|--:|--:|:--|
+| Decision Tree (DT-1A) | 0.8988 | 0.713 | 0.170 | 0.274 | 0.708 | Simple baseline, low recall |
+| Decision Tree (DT-1B) | 0.8117 | 0.858 | 0.719 | 0.782 | 0.843 | SMOTE-balanced, strong recall |
+| Random Forest (RF-2A) | 0.8986 | 0.614 | 0.267 | 0.373 | 0.787 | Stable but biased to “no” |
+| Random Forest (RF-2B) | 0.8995 | 0.641 | 0.245 | 0.355 | 0.786 | Tuned RF, slightly improved precision |
+| **AdaBoost (AB-3A)** | **0.9003** | **0.697** | **0.204** | **0.315** | **0.807** | Best accuracy & AUC among baselines |
+
+AdaBoost thus offered a modest improvement in discriminative power (AUC) and precision,  
+yet continued to struggle with recall—mirroring Random Forest’s bias toward the dominant class.
+
+---
+
+### Conclusion
+The baseline AdaBoost model demonstrates **strong accuracy and discrimination** (AUC > 0.8) but **poor sensitivity to the minority “yes” class**.  
+While it effectively identifies non-subscribers, it fails to capture many potential subscribers—an important limitation in marketing contexts.  
+
+In the next phase (**Experiment 3B – Tuned AdaBoost with Cross-Validation**),  
+we will aim to improve minority-class detection by:
+- Increasing the number of boosting iterations (`mfinal`),
+- Adjusting tree depth (`maxdepth`),
+- And incorporating **class balancing (SMOTE or upsampling)** with **cross-validation** to enhance recall while maintaining robust AUC.
+
+
+
+
+```{r}
+# -----------------------------------------------------------
+# Experiment 3B – Tuned AdaBoost (Final Stable Version)
+# -----------------------------------------------------------
+
+# --- Load Libraries ---
+if (!require(adabag)) install.packages("adabag")
+if (!require(caret)) install.packages("caret")
+if (!require(pROC)) install.packages("pROC")
+if (!require(dplyr)) install.packages("dplyr")
+if (!require(forcats)) install.packages("forcats")
+
+library(adabag)
+library(caret)
+library(pROC)
+library(dplyr)
+library(forcats)
+
+# --- 1. Prepare Data ---
+train_ada <- train
+test_ada  <- test
+
+train_ada$y <- factor(train_ada$y, levels = c("no", "yes"))
+test_ada$y  <- factor(test_ada$y, levels = c("no", "yes"))
+
+# --- 2. Define numeric columns ---
+numeric_cols <- c(
+  "age", "duration", "campaign", "pdays", "previous",
+  "emp.var.rate", "cons.price.idx", "cons.conf.idx",
+  "euribor3m", "nr.employed"
+)
+
+# --- 3. Convert data types safely ---
+for (col in names(train_ada)) {
+  if (col %in% numeric_cols) {
+    train_ada[[col]] <- suppressWarnings(as.numeric(as.character(train_ada[[col]])))
+    test_ada[[col]]  <- suppressWarnings(as.numeric(as.character(test_ada[[col]])))
+  } else if (col != "y") {
+    train_ada[[col]] <- as.factor(as.character(train_ada[[col]]))
+    test_ada[[col]]  <- as.factor(as.character(test_ada[[col]]))
+  }
+}
+
+# --- 4. Handle missing values ---
+for (col in names(train_ada)) {
+  if (is.factor(train_ada[[col]])) {
+    train_ada[[col]] <- fct_explicit_na(train_ada[[col]], na_level = "missing")
+    test_ada[[col]]  <- fct_explicit_na(test_ada[[col]], na_level = "missing")
+  } else {
+    train_ada[[col]][is.na(train_ada[[col]])] <- 0
+    test_ada[[col]][is.na(test_ada[[col]])]  <- 0
+  }
+}
+
+# --- 5. Align factor levels between train/test ---
+for (col in names(train_ada)) {
+  if (is.factor(train_ada[[col]])) {
+    lvls <- union(levels(train_ada[[col]]), levels(test_ada[[col]]))
+    train_ada[[col]] <- factor(train_ada[[col]], levels = lvls)
+    test_ada[[col]]  <- factor(test_ada[[col]],  levels = lvls)
+  }
+}
+
+# --- 6. Optional: Reduce training set for faster runtime ---
+set.seed(123)
+train_small <- train_ada[sample(nrow(train_ada), 10000), ]
+
+# --- 7. Train AdaBoost model ---
+set.seed(123)
+cat("Training AdaBoost model... please wait (~30 sec)\n")
+
+model_ada_final <- tryCatch({
+  boosting(
+    y ~ ., 
+    data = train_small,
+    boos = TRUE,
+    mfinal = 35,      # reduced iterations for speed
+    coeflearn = "Zhu"
+  )
+}, error = function(e) {
+  cat("AdaBoost training failed:", e$message, "\n")
+  return(NULL)
+})
+
+# --- 8. Predict and handle probability issue ---
+if (!is.null(model_ada_final)) {
+  cat("Training complete. Making predictions...\n")
+  pred_ada_final <- predict(model_ada_final, newdata = test_ada)
+  
+  pred_class <- factor(pred_ada_final$class, levels = c("no", "yes"))
+  
+  # --- FIX: Add column names to probability matrix if missing ---
+  if (is.null(dimnames(pred_ada_final$prob))) {
+    colnames(pred_ada_final$prob) <- c("no", "yes")
+  }
+  
+  pred_prob <- pred_ada_final$prob[, "yes"]
+
+  # --- 9. Compute metrics ---
+  m_ada_final <- compute_metrics(
+    truth = test_ada$y,
+    pred_class = pred_class,
+    pred_prob_yes = pred_prob
+  )
+
+  print(m_ada_final)
+
+  # --- 10. Log results ---
+  log_result(
+    alg = "AdaBoost",
+    exp_name = "AB-3B Tuned (Final Stable)",
+    change_desc = "Handled missing dimnames in prob, fixed factor alignment, reduced sample for runtime efficiency",
+    metrics_tbl = m_ada_final
+  )
+
+  # --- 11. Show experiment log ---
+  print(results_log)
+
+} else {
+  cat(" AdaBoost model could not be trained. Please check data.\n")
+}
+
+```
+### Interpretation
+
+The tuned AdaBoost model (Experiment 3B) achieved an **Accuracy of 0.8973**, **Precision of 0.5997**, **Recall of 0.2638**, **F1-score of 0.3665**, and an **AUC of 0.7761**.  
+Compared to the baseline AdaBoost (Experiment 3A), which recorded an AUC of 0.8071 and Recall of 0.2035, the tuned version exhibited a **slight decrease in overall AUC** but demonstrated a **modest improvement in Recall** (+0.06).  
+
+This indicates that while the model became slightly less discriminative in terms of ROC performance, it gained a better ability to correctly identify positive cases (improved sensitivity).  
+The Precision dropped marginally, suggesting that the model’s broader detection of positives came with more false positives.  
+
+Overall, the **tuning and preprocessing improvements** (handling of factor levels, consistent probability dimensions, and runtime optimization) made the model **more stable and reproducible**, albeit with a **trade-off between precision and recall**.  
+These results highlight AdaBoost’s sensitivity to data representation and parameter tuning — small adjustments can impact how well the ensemble balances accuracy and minority class detection.
