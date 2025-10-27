@@ -969,8 +969,6 @@ set.seed(123)
 
 ### Why Use `df` (and not `df_smote` or `up`)
 
-This is a subtle but important point in the modeling workflow.
-
 The dataset **`df`** represents the *original, clean data* that retains its natural class imbalance.  
 In contrast, **`df_smote`** and **`up`** are *artificially balanced versions* created during experimentation to address that imbalance.
 
@@ -1513,8 +1511,9 @@ This sets the stage for **Experiment 2B**, which will apply **SMOTE** and **cros
 
 - **Decision Tree (1B)** and **Random Forest (2A)** both outperform the simple baseline tree.  
 - SMOTE balancing yields the **most business-relevant improvement** — higher recall and F1-score.  
-- The next step (Experiment 2B) should combine both strengths:  
-  **Random Forest’s ensemble stability** + **SMOTE’s balanced learning** + **cross-validation for tuning.**
+- The next step (Experiment 2B) should combine both strengths: 
+**Random Forest’s ensemble stability, SMOTE’s balanced learning and cross-validation for tuning.**
+ 
   
      
 ```{r}
@@ -1727,6 +1726,7 @@ Future improvements may focus on:
 ### Conclusion
 Experiment 2B confirms that cross-validation and modest hyperparameter tuning alone do not guarantee performance improvement.  
 In highly imbalanced datasets like this, further balancing or algorithmic adjustments may be required to achieve meaningful gains in recall and AUC.
+
 
 
 ```{r}

@@ -1,0 +1,89 @@
+---
+title: "Review of Two Articles (Provided in Assignment)"
+author: "Mubashira Qari"
+date: "2025-10-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+---
+title: "Review and Comparison of COVID-19 Prediction Studies"
+author: "Mubashira Qari"
+date: "2025-10-26"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+## Review of Articles
+
+### Article 1: *A novel approach to predict COVID-19 using support vector machine (SVM)*
+Link: [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8137961/](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8137961/)  
+This study proposes a machine-learning-based diagnostic system that applies a **Support Vector Machine (SVM)** to predict COVID-19 infection severity. Using a small dataset of 200 records containing clinical attributes such as temperature, breathing rate, heart disease, and cough type, the model classified cases as *not infected*, *mildly infected*, or *severely infected*.  
+Through a linear kernel SVM and a 70/30 train-test split, the model achieved an **accuracy of 87%** with strong recall for the *severely infected* class, indicating its ability to minimise false negatives in critical cases.  
+The study emphasises that machine learning can supplement slow, resource-intensive RT-PCR testing by offering rapid, data-driven assessments based on routine medical indicators. However, it also acknowledges limitations such as the small sample size and reliance on structured data rather than large-scale clinical records.
+
+---
+
+### Article 2: *Decision Tree Ensembles to Predict Coronavirus Disease 2019 Infection: A Comparative Study*  
+Link: [https://www.hindawi.com/journals/complexity/2021/5550344/](https://www.hindawi.com/journals/complexity/2021/5550344/)  
+This paper compares multiple **decision tree ensemble algorithms**—including Random Forest, XGBoost, Bagging, AdaBoost, and specialised imbalanced-data models like **RUSBagging** and **Balanced Random Forest (RUS)**—to classify COVID-19 cases using laboratory test data.  
+The dataset (600 cases from São Paulo) was **highly imbalanced** (520 negative vs. 80 positive). Using **10-fold cross-validation**, results showed that ensemble methods designed for imbalance significantly improved performance:
+- **RUSBagging:** AUROC = 0.881  
+- **Balanced Random Forest:** AUPRC = 0.561  
+Adding **age** as a predictor further enhanced results, reflecting its known clinical relevance. The study highlights that **metric selection (AUPRC over accuracy)** and **data-specific modelling choices** are critical for reliable medical predictions. It also recommends integrating lab tests with imaging data and expanding research to SVMs and deep learning frameworks.
+
+---
+
+## Comparison and Insights
+
+Both studies share a common goal—**using machine learning to improve early COVID-19 diagnosis**—but differ in scope and methodological rigour:
+
+| Aspect | SVM Study (NCBI) | Decision Tree Ensemble Study (Hindawi) |
+|--------|------------------|----------------------------------------|
+| Algorithm Type | Linear SVM (single model) | Multiple ensemble trees (Random Forest, XGBoost, RUS variants) |
+| Dataset Size | 200 samples | 600 samples |
+| Data Type | Clinical symptoms & comorbidities | Laboratory test results |
+| Handling of Imbalance | Not addressed explicitly | Directly addressed via SMOTE, RUS, and hybrid ensembles |
+| Performance Metric | Accuracy & recall | AUROC, AUPRC, F1-score |
+| Best Model Result | 87% accuracy | AUROC = 0.881 (RUSBagging), AUPRC = 0.561 (Balanced RF) |
+
+### Key Insights
+1. **Model complexity vs. interpretability:**  
+   The SVM model provides a quick, interpretable decision boundary suitable for small, structured datasets, while the ensemble trees handle larger, more heterogeneous data more robustly.
+
+2. **Handling imbalanced data:**  
+   The second paper’s focus on imbalance correction and AUPRC as a fairness metric makes its results more credible for real-world medical use, where false negatives have serious consequences.
+
+3. **Feature influence:**  
+   Both studies demonstrate that incorporating clinical or demographic context (e.g., *age*, *comorbidities*) enhances predictive power.
+
+4. **Scalability and generalisation:**  
+   The ensemble study offers a stronger framework for future pandemic modelling, integrating oversampling/undersampling strategies and demonstrating adaptability to new datasets.
+
+---
+
+## Area of Expertise/Interest
+
+My professional and academic focus lies in **Data Science and Predictive Analytics**, particularly the application of **machine learning models for health and risk prediction**. The insights from these studies align closely with my interest in **data preprocessing, model tuning, and evaluation using ROC/AUC metrics**.
+
+- The SVM model illustrates how linear classifiers can act as strong baselines for binary and multi-class health classification tasks when data volume is limited.  
+- The Decision Tree Ensemble research demonstrates advanced ensemble learning strategies (Bagging, Boosting, Random Forest) that I frequently apply in my own analytical work—such as evaluating model bias, optimizing hyper-parameters (`tuneLength`, `max_depth`, `n_estimators`), and validating through cross-validation.
+
+### Results Related to Area of Expertise
+From a data‐science perspective:
+- The studies reinforce the importance of **data balancing** (RUS, SMOTE) before training models—a process I apply in predictive modelling tasks like incident severity or bank marketing classification.  
+- Both demonstrate how **AUC-based evaluation** provides a more reliable measure of model performance than raw accuracy, especially for skewed datasets.  
+- The findings encourage using **hybrid or ensemble frameworks** that combine interpretability and predictive strength, aligning with my goal to develop **explainable AI (XAI)** models in healthcare analytics.
+
+---
+
+## Summary
+
+Together, these articles illustrate a transition from single-model approaches (SVM) to advanced **ensemble and imbalance-aware frameworks** (RUSBagging, XGBoost) that achieve higher predictive reliability for COVID-19 detection.  
+For a data scientist, the research underscores the critical balance between **algorithm selection, data characteristics, and metric interpretation**, ultimately guiding more ethical and effective use of AI in health diagnostics.
+
+---

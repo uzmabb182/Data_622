@@ -1,0 +1,56 @@
+---
+title: "Assignment3_Essay_Data622"
+author: "Mubashira Qari"
+date: "2025-10-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## **Essay — Selection of Algorithms and Their Relationship to the Data**
+
+The goal of this project was to build and evaluate predictive models capable of determining whether a client would subscribe to a term deposit based on a variety of demographic, social, and economic features. The dataset, derived from a Portuguese banking campaign, contains both numerical and categorical variables, with a binary target variable (`y = yes/no`). Given the complexity and mixed nature of the data, I selected a diverse set of algorithms — **Decision Tree**, **Random Forest**, **AdaBoost**, and **Support Vector Machine (SVM)** — each offering unique strengths for classification, interpretability, and generalization.  
+
+---
+
+### **1. Decision Tree**
+
+The **Decision Tree** model was chosen as the starting point because it is simple, interpretable, and well-suited for datasets that include both categorical and continuous predictors. It provides clear insight into how decisions are made and which features contribute most to classification outcomes. In the baseline model (DT-1A), the tree was trained on imbalanced data, resulting in high accuracy but low recall — meaning that while it correctly classified many “no” cases, it struggled to identify “yes” cases effectively.  
+
+To address this, I implemented a **tuned Decision Tree (DT-1B)** using **SMOTE (Synthetic Minority Over-sampling Technique)** to balance the dataset, alongside hyperparameter tuning (e.g., `cp=0.005`, `maxdepth=6`). This significantly improved recall and AUC, indicating better sensitivity toward clients likely to subscribe. The Decision Tree also provided high transparency — an essential factor in financial contexts, where model interpretability helps stakeholders understand the drivers of customer decisions.
+
+---
+
+### **2. Random Forest**
+
+Building on the interpretability of Decision Trees, I introduced **Random Forest**, an ensemble of multiple trees designed to reduce overfitting and improve predictive stability. Random Forest models excel at handling nonlinear relationships and variable interactions, which is valuable in this dataset since factors like age, job, and economic indicators interact in complex ways.  
+
+The baseline Random Forest (RF-2A) achieved strong accuracy and robust performance without overfitting, while the **tuned version (RF-2B)** — with optimized `mtry` and `ntree` parameters — offered marginal gains in AUC. Despite its “black box” nature, Random Forest remains a reliable and industry-standard algorithm due to its high stability, ability to handle noisy variables, and resilience to missing data.
+
+---
+
+### **3. AdaBoost**
+
+The **AdaBoost** (Adaptive Boosting) algorithm was introduced next as a way to increase model precision and reduce bias. Unlike Random Forest, which builds trees in parallel, AdaBoost builds weak learners sequentially — each new tree focuses on the errors of its predecessor. This iterative reweighting allows the model to handle complex boundary cases effectively.  
+
+In this study, AdaBoost performed exceptionally well, achieving one of the highest accuracies and an AUC above 0.80. Its robustness makes it particularly appealing for real-world deployment, where data can be imperfect or imbalanced. AdaBoost’s interpretability is lower than a single Decision Tree, but its performance gain makes it a suitable model for production environments where predictive accuracy is the priority.
+
+---
+
+### **4. Support Vector Machines (SVM)**
+
+Lastly, **Support Vector Machines** were applied in both **Linear** and **RBF (Radial Basis Function)** kernel forms. SVMs are powerful for high-dimensional data and work by finding the optimal hyperplane that maximizes the margin between classes. Since the dataset includes scaled continuous features (like `euribor3m`, `emp.var.rate`, and `cons.conf.idx`), SVMs were appropriate candidates to test their ability to separate complex patterns.  
+
+The **Linear SVM** achieved an AUC of 0.7296, serving as a solid baseline. The **RBF SVM** slightly improved performance (AUC = 0.7336), capturing limited nonlinear patterns in the data. However, SVMs were more computationally intensive and provided lower interpretability compared to tree-based models, making them less suitable for large-scale or business-facing applications in this context.
+
+---
+
+### **5. Summary and Justification**
+
+Each algorithm was deliberately chosen to balance interpretability, performance, and computational cost. The **Decision Tree** served as the foundation for understanding the data’s structure and relationships. The **Random Forest** improved upon it by enhancing generalization, while **AdaBoost** provided a high-performing, bias-resistant ensemble approach. Finally, **SVMs** offered an advanced margin-based method to validate whether linear or nonlinear separations better explained the target behavior.  
+
+The final results confirmed that the **Tuned Decision Tree (DT-1B)** was the optimal model — achieving the highest AUC (0.8427) and strongest recall — demonstrating its ability to accurately identify potential deposit subscribers while remaining transparent and interpretable. These findings reinforce the importance of combining data preprocessing, feature scaling, and balanced sampling to maximize the effectiveness of classification models in financial analytics.
+
+---
+
+**In conclusion**, the chosen models collectively provided a comprehensive exploration of the dataset’s predictive structure. While ensemble methods like **AdaBoost** and **Random Forest** delivered consistent accuracy, the **Decision Tree (Tuned)** emerged as the most practical and insightful model for both business decision-making and future deployment within financial customer segmentation systems.

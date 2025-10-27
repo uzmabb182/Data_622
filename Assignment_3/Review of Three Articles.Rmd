@@ -1,0 +1,85 @@
+---
+title: "Review of Three Articles (Searched by MQari)"
+author: "Mubashira Qari"
+date: "2025-10-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+---
+title: "Review and Comparison of SVM vs Decision Tree Articles"
+author: "Mubashira Qari"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+## Review of Articles
+
+**Articles reviewed:**  
+- [SVM versus Decision Trees: A Comparative Analysis in Supervised Learning (Medium)](https://medium.com/@jangdaehan1/svm-versus-decision-trees-a-comparative-analysis-in-supervised-learning-07e6fcc14ecd)  
+- [Comparing Support Vector Machines and Decision Trees for Text Classification (GeeksforGeeks)](https://www.geeksforgeeks.org/machine-learning/comparing-support-vector-machines-and-decision-trees-for-text-classification/)  
+- [The Difference Between SVM and Decision Trees (Coursera Article)](https://www.coursera.org/articles/difference-between-svm-and-decision-tree)  
+
+### Article 1: “SVM versus Decision Trees: A Comparative Analysis in Supervised Learning”  
+**Link:** [https://medium.com/@jangdaehan1/svm-versus-decision-trees-a-comparative-analysis-in-supervised-learning-07e6fcc14ecd](https://medium.com/@jangdaehan1/svm-versus-decision-trees-a-comparative-analysis-in-supervised-learning-07e6fcc14ecd)  
+This article discusses the key differences between Support Vector Machine (SVM) and Decision Tree algorithms in supervised learning. It highlights that SVMs often outperform decision trees in high-dimensional data when a suitable kernel is used, and decision trees are simpler and more interpretable, handle mixed types and missing values more easily. It emphasises that the choice of algorithm depends heavily on data characteristics (dimensionality, separability, noise) and the problem context of interpretability vs performance.
+
+### Article 2: “Comparing Support Vector Machines and Decision Trees for Text Classification”  
+**Link:** [https://www.geeksforgeeks.org/machine-learning/comparing-support-vector-machines-and-decision-trees-for-text-classification/](https://www.geeksforgeeks.org/machine-learning/comparing-support-vector-machines-and-decision-trees-for-text-classification/)  
+In this article, a practical comparison is done for text classification (the 20 Newsgroups dataset) using Decision Tree vs SVM. The results show that the Decision Tree model achieved about 61.67% accuracy, whereas the SVM model out-performed it on accuracy, precision, recall, and F1-score. The article explains that SVMs handle high-dimensional, sparse, text-based data better because of margin maximization and ability to manage many features; decision trees in such contexts tend to overfit or give sub-optimal performance. It also discusses when decision trees might still be preferred (interpretability, mixed feature types, smaller feature sets).
+
+### Article 3: “The Difference Between SVM and Decision Trees”  
+**Link:** [https://www.coursera.org/articles/difference-between-svm-and-decision-tree](https://www.coursera.org/articles/difference-between-svm-and-decision-tree)  
+This article provides a high-level overview of how SVMs and decision trees work, their advantages and challenges. It explains SVMs approach classification by finding an optimal hyperplane (often in higher-dimensional feature space via kernel trick) while decision trees make series of feature-based splits in tree form. It outlines that decision trees are more interpretable and handle heterogeneous data types well, but may struggle with complex boundaries; SVMs may handle complex boundaries and high-dimension data but can be less interpretable and require more preprocessing/hyperparameter tuning.  
+
+---
+
+## Comparison and Insights  
+Focusing on the comparison between Article 1 (Medium) and Article 2 (GeeksforGeeks), here are the main insights:
+
+| Feature                       | Article 1 (Medium)                                            | Article 2 (GeeksforGeeks)                                        |
+|------------------------------|--------------------------------------------------------------|-------------------------------------------------------------------|
+| Context                      | Broad comparative discussion of SVM vs Decision Tree across data types | Specific empirical study on text classification (20 Newsgroups)    |
+| Algorithm performance        | SVM generally preferred for high-dimension, complex datasets | SVM empirically out-performs Decision Tree on text data            |
+| Data type & problem          | Various supervised tasks (general)                          | Text classification – high-dimensional sparse features             |
+| Interpretability emphasis    | Decision Trees valued for ease of interpretation            | Emphasises performance metrics; Decision Tree weaker in this context |
+| Practical guidance           | Emphasises selection based on data and use case             | Offers concrete empirical evidence favouring SVM for text          |
+
+### Key Insights  
+- **Data characteristics drive algorithm choice**: Both articles emphasise that the nature of the input data (feature dimensionality, sparsity, noise) strongly influences whether SVM or Decision Tree is the better choice. For example, high-dimensional text data favour SVM (Article 2), while contexts where interpretability or mixed feature types matter might favour decision trees (Article 1).  
+- **Interpretability vs Accuracy Trade-Off**: Decision trees are easier to interpret (transparent splits, rule-based), which is beneficial in many applications (e.g., ones requiring explainability). However, when the prime goal is prediction accuracy—especially with many features or complex boundaries—SVMs often win.  
+- **Empirical evidence supports SVM in many cases**: The text classification benchmark in Article 2 shows SVM outperforming decision tree fairly decisively, reinforcing the general argument of Article 1 in a concrete setting.  
+- **No one-size-fits-all**: Both articles underscore that neither algorithm universally dominates; the decision must be grounded in data type, problem domain, resource constraints (training time, compute), and interpretability needs.
+
+---
+
+## Area of Expertise / Interest  
+### Explanation  
+My professional and academic focus lies in **Data Science and Predictive Analytics**, particularly the application of **machine learning models for health and risk prediction**. I routinely engage with problems involving many features, imbalanced classes, and require a balance between predictive performance and interpretability (for example in healthcare or operational risk domains). I also focus on preprocessing (feature engineering, scaling, handling imbalance), algorithm selection, hyperparameter tuning, and rigorous model evaluation (e.g., using ROC, precision/recall, AUC rather than just accuracy).
+
+### Results Related to My Area of Interest  
+- These articles deepen my understanding of how algorithm choice (SVM vs Decision Tree) maps to **data characteristics**—something I consider crucial when designing modelling pipelines for high-dimensional or sparse datasets.  
+- They reinforce the importance of **interpretability vs predictive power** trade-offs—vital in healthcare analytics where model transparency matters.  
+- They underscore that relying on performance metrics beyond accuracy (precision, recall, F1, AUC) is important—my own work emphasises this when dealing with rare events or imbalanced data.  
+- They highlight how preprocessing (e.g., for SVM kernels or tree splitting, handling high-dimensional features) is important for model success—directly aligning with my work in feature engineering and model tuning.  
+
+---
+
+## Summary  
+The three articles together illustrate that in supervised learning the decision between SVM and Decision Tree (or tree-based methods) should not be made arbitrarily. It requires careful consideration of:  
+- The **dimensionality**, **sparsity**, and **feature characteristics** of the dataset,  
+- The need for **interpretability** vs pure predictive performance,  
+- The **computational and tuning budget**, and  
+- The **evaluation metrics** suitable for the problem context (especially when class imbalance is present).  
+
+For a data-scientist working in predictive modelling, these insights reinforce a disciplined, data-driven algorithm-selection mindset rather than defaulting to a “favorite” model.  
+
+---
+
+
+

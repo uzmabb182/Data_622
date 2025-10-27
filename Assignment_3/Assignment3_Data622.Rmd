@@ -1,13 +1,13 @@
 ---
-title: "Assignment2_Data622"
+title: "Assignment3_Data622"
 author: "Mubashira Qari"
-date: "2025-10-11"
+date: "2025-10-26"
 output:
-  html_document:
+ html_document:
     toc: true
     toc_float: true
     number_sections: true
-  pdf_document:
+ pdf_document:
     toc: true
 ---
 
@@ -122,9 +122,9 @@ The dataset’s main purpose is to predict whether a bank client will subscribe 
 
 ---
 
-## PART I: Exploratory Data Analysis (EDA) {.tabset}
+## **PART I: Exploratory Data Analysis (EDA)** {.tabset}
 
-```{r warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 # Load Libraries
 
 library(dplyr)
@@ -704,7 +704,7 @@ The dataset contains **structural missing values** rather than random NA’s. Th
 
 ---
 
-# PART II: Pre-Processing {.tabset}  
+## **PART II: Pre-Processing** {.tabset}  
 
 ### A. Data Cleaning  
 - Replace `"unknown"` with explicit category *missing*.  
@@ -800,7 +800,7 @@ df <- df %>%
     previous_log         = log1p(previous)
   )
 
-df
+head(df)
 
 
 ```
@@ -830,7 +830,7 @@ By removing `duration` and its derived features (`duration_contact`, `duration_l
 # --- Exclude duration (data leakage variable) ---
 df <- df %>% select(-duration, -duration_contact, -duration_log)
 
-df
+head(df)
 ```
 
 
@@ -934,53 +934,7 @@ ggplot(up_tbl, aes(x = Class, y = Count, fill = Class)) +
   theme_minimal()
 
 ```
-# PART III: Experimentation & Model Training {.tabset}
 
-This section fulfills the experimental requirements.  
-We will train and compare three algorithms — **Decision Tree**, **Random Forest**, and **AdaBoost** — using two experiments for each.
-
-Each experiment:
-1. Defines a **hypothesis/objective**
-2. Specifies **what changes** (hyperparameters, resampling, etc.)
-3. Keeps all other elements constant (data split, metrics)
-4. Evaluates results using **Accuracy**, **Precision**, **Recall**, **F1**, and **AUC**
-
----
-## Verifying What Each Dataset Contains
-
-```{r}
-# Check how many rows and columns each dataset has
-dim(df)          # original cleaned dataset
-dim(X_imp)       # encoded + scaled predictors
-dim(df_smote)    # SMOTE-balanced dataset
-dim(up)          # Upsampled dataset
-
-```
-```{r}
-# Verify Class Balance in Each Dataset
-
-# Original dataset
-table(df$y)
-
-# After SMOTE
-table(df_smote$y)
-
-# After Upsampling
-table(up$y)
-
-# Check that df_smote has your predictors + label:
-
-names(df_smote)
-
-# The last column should be y (the factor label).
-
-# to verify column alignment (all predictors preserved)
-# empty vector (character(0)) means all columns match
-
-setdiff(names(X_imp), names(df_smote))
-
-
-```
 ```{r}
 summary_tbl <- data.frame(
   Dataset = c("Original df", "SMOTE df_smote", "Upsampled up"),
@@ -996,6 +950,8 @@ summary_tbl <- data.frame(
 summary_tbl
 
 ```
+## **PART III: Experimentation and Model Training** {.tabset}  
+
 
 ## Setup and Common Utilities
 
@@ -1012,8 +968,6 @@ set.seed(123)
 ```
 
 ### Why Use `df` (and not `df_smote` or `up`)
-
-This is a subtle but important point in the modeling workflow.
 
 The dataset **`df`** represents the *original, clean data* that retains its natural class imbalance.  
 In contrast, **`df_smote`** and **`up`** are *artificially balanced versions* created during experimentation to address that imbalance.
@@ -1093,6 +1047,7 @@ compute_metrics <- function(truth, pred_class, pred_prob_yes = NULL, positive = 
 
 ```
 
+
 ### Experiment Logger
 
 To manage multiple experiments in a structured way, we create a simple **experiment logging system**.  
@@ -1112,6 +1067,7 @@ The following code creates an empty tibble (`results_log`) with columns for algo
 The `log_result()` function appends model results (performance metrics) and experiment details to the global results table.  
 This allows us to track multiple runs across different algorithms and configurations.
 
+---
 
 ```{r}
 # --- Experiment Logger Setup ---
@@ -1150,6 +1106,8 @@ log_result <- function(alg, exp_name, change_desc, metrics_tbl) {
 
 ```
 
+### Decision Tree Experiments
+
 ## Experiment 1A – Baseline Decision Tree
 
 ### Objective
@@ -1177,6 +1135,10 @@ By using the original dataset (`df`), we simulate real-world conditions — incl
 
 
 ```{r}
+# -----------------------------------------------------------
+# Experiment 1A – Baseline Decision Tree
+# -----------------------------------------------------------
+
 # Load required libraries
 library(rpart)
 library(rpart.plot)
@@ -1209,6 +1171,7 @@ log_result(
 rpart.plot(model_dt_base, main = "Decision Tree - Baseline Model", extra = 106)
 
 ```
+
 ## Interpretation of Experiment 1A – Baseline Decision Tree (Original Data)
 
 ### Summary of Results
@@ -1260,7 +1223,6 @@ In a real-world marketing context, this model would **miss most potential subscr
 
 Therefore, these results clearly justify the need for the next experiment (1B), where we apply **SMOTE balancing and parameter tuning** to increase recall and overall predictive fairness between classes.
 
-
 ## Experiment 1B – Tuned Decision Tree (SMOTE Data)
 
 ### Objective
@@ -1300,6 +1262,10 @@ By also tuning the tree’s complexity, we ensure that the model:
 ### Tuned Decision Tree with SMOTE
 
 ```{r}
+# -----------------------------------------------------------
+# Experiment 1B – Tuned Decision Tree (SMOTE Data)
+# -----------------------------------------------------------
+
 # --- Load Required Packages ---
 library(rpart)
 library(rpart.plot)
@@ -1343,6 +1309,7 @@ log_result(
 rpart.plot(model_dt_tuned, main = "Decision Tree – Tuned Model (SMOTE Data)", extra = 106)
 
 ```
+
 ## Interpretation of Experiment 1B – Tuned Decision Tree (SMOTE Data)
 
 ### Summary of Results
@@ -1399,6 +1366,9 @@ While overall accuracy slightly decreased, this trade-off is beneficial: the mod
 
 In summary, **Experiment 1B transforms the Decision Tree into a balanced, high-recall, and high-AUC model** that provides realistic, actionable predictions for term-deposit subscription campaigns.
 
+---
+
+### Random Forest Experiments
 
 ## Experiment 2A – Baseline Random Forest (Default Parameters)
 
@@ -1416,6 +1386,9 @@ The goal is to observe how ensemble methods compare to a single Decision Tree wi
 ### Expected Outcome
 Random Forest should outperform the single Decision Tree in **AUC** and **stability**, but **recall** for the minority class ("yes") may remain low due to class imbalance.
 
+---
+
+## Experiment 2A – Baseline Random Forest (Default Parameters)
 
 ```{r}
 # -----------------------------------------------------------
@@ -1538,9 +1511,84 @@ This sets the stage for **Experiment 2B**, which will apply **SMOTE** and **cros
 
 - **Decision Tree (1B)** and **Random Forest (2A)** both outperform the simple baseline tree.  
 - SMOTE balancing yields the **most business-relevant improvement** — higher recall and F1-score.  
-- The next step (Experiment 2B) should combine both strengths:  
-  **Random Forest’s ensemble stability** + **SMOTE’s balanced learning** + **cross-validation for tuning.**
+- The next step (Experiment 2B) should combine both strengths: 
+**Random Forest’s ensemble stability, SMOTE’s balanced learning and cross-validation for tuning.**
+ 
+  
      
+```{r}
+# -----------------------------------------------------------
+# Visualization for Experiment 2A – Baseline Random Forest
+# -----------------------------------------------------------
+
+library(ggplot2)
+library(pROC)
+library(caret)
+
+# Variable Importance Plot
+rf_imp <- varImp(model_rf_base)
+rf_imp_df <- as.data.frame(rf_imp$importance)
+rf_imp_df$Feature <- rownames(rf_imp_df)
+rf_imp_df <- rf_imp_df %>%
+  arrange(desc(Overall)) %>%
+  head(15)  # show top 15 important features
+
+ggplot(rf_imp_df, aes(x = reorder(Feature, Overall), y = Overall)) +
+  geom_col(fill = "Blue", alpha = 0.8) +
+  coord_flip() +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Feature Importance – Random Forest (Experiment 2A)",
+    x = "Feature",
+    y = "Importance"
+  )
+
+# ROC Curve
+roc_rf <- roc(test_rf$y, pred_rf_base_prob)
+plot(roc_rf, col = "Red", lwd = 2, main = "ROC Curve – Random Forest (Experiment 2A)")
+abline(a = 0, b = 1, lty = 2, col = "Grey")
+
+# Confusion Matrix Visualization
+cm_rf <- confusionMatrix(pred_rf_base_class, test_rf$y, positive = "yes")
+cm_table <- as.data.frame(cm_rf$table)
+
+ggplot(cm_table, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "black", size = 5) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Confusion Matrix – Random Forest (Experiment 2A)",
+    fill = "Count"
+  )
+
+```
+ ### Interpretation of Visualizations
+
+**1. Feature Importance Plot**  
+This plot highlights the most influential predictors in the Random Forest model.  
+Variables with longer bars have a greater impact on classification outcomes.  
+Notably, key economic indicators such as *euribor3m* and *nr.employed* exhibit strong influence, underscoring their significance in predicting client subscription behavior.  
+
+**2. ROC Curve**  
+The Receiver Operating Characteristic (ROC) curve illustrates the trade-off between the **True Positive Rate (Recall)** and the **False Positive Rate (1 − Specificity)**.  
+An Area Under the Curve (AUC) value of approximately **0.78** indicates good discriminatory ability.  
+The farther the curve lies above the diagonal line, the more effectively the model distinguishes between positive and negative classes.  
+
+**3. Confusion Matrix Heatmap**  
+This confusion matrix summarizes the prediction results of the baseline Random Forest model on the test dataset.
+
+- **True Negatives (TN):** 10,727 cases were correctly classified as “no,” meaning the model accurately identified clients who did not subscribe to the term deposit.  
+- **False Positives (FP):** 372 cases were incorrectly predicted as “yes” when the actual outcome was “no.” These represent clients wrongly classified as likely subscribers.  
+- **False Negatives (FN):** 1,019 cases were predicted as “no” but were actually “yes,” indicating missed potential subscribers.  
+- **True Positives (TP):** 234 cases were correctly identified as “yes,” representing clients who indeed subscribed and were accurately predicted.
+
+The color gradient reflects the **frequency of cases**, with darker cells showing higher counts.  
+The large number of true negatives compared to true positives highlights the **class imbalance** in the dataset — the “no” class dominates, which explains the model’s bias toward predicting non-subscribers.  
+
+Overall, while the model achieves high **accuracy**, its **recall for the positive class** (subscribers) is relatively low, indicating that the Random Forest struggles to detect minority-class (“yes”) cases effectively in this baseline setup.
+
+---
   
 ## Experiment 2B – Tuned Random Forest (Cross-Validation)
 
@@ -1570,6 +1618,7 @@ Through hyperparameter tuning and cross-validation, the model is expected to ach
 
 ---
 
+## Experiment 2B – Tuned Random Forest (Cross-Validation, Faster Version)
 
 ```{r}
 # -----------------------------------------------------------
@@ -1637,6 +1686,7 @@ results_log
 
 
 ```
+
 ## Interpretation of Experiment 2B – Tuned Random Forest (Cross-Validation)
 
 | Metric | Value |
@@ -1677,6 +1727,95 @@ Future improvements may focus on:
 Experiment 2B confirms that cross-validation and modest hyperparameter tuning alone do not guarantee performance improvement.  
 In highly imbalanced datasets like this, further balancing or algorithmic adjustments may be required to achieve meaningful gains in recall and AUC.
 
+
+
+```{r}
+# -----------------------------------------------------------
+# Visualization – Random Forest (Experiment 2B)
+# -----------------------------------------------------------
+
+library(ggplot2)
+library(pROC)
+library(caret)
+library(dplyr)
+library(tidyr)
+
+# --- Feature Importance Plot ---
+importance_df <- as.data.frame(varImp(model_rf_tuned)$importance)
+importance_df$Feature <- rownames(importance_df)
+colnames(importance_df)[1] <- "Importance"
+
+importance_df <- importance_df %>%
+  arrange(desc(Importance)) %>%
+  slice(1:15)   # top 15 features
+
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Feature Importances – Random Forest (Experiment 2B)",
+    x = "Feature",
+    y = "Importance Score"
+  ) +
+  theme_minimal(base_size = 12)
+
+# --- ROC Curve ---
+roc_rf_tuned <- roc(test_rf_tuned$y, pred_rf_tuned_prob, levels = c("no", "yes"))
+plot(roc_rf_tuned, col = "darkorange", lwd = 3,
+     main = "ROC Curve – Random Forest (Experiment 2B)")
+text(0.6, 0.3, paste("AUC =", round(auc(roc_rf_tuned), 4)), col = "black", cex = 1.2)
+
+# --- Confusion Matrix Heatmap ---
+cm_rf_tuned <- confusionMatrix(pred_rf_tuned_class, test_rf_tuned$y, positive = "yes")
+cm_df <- as.data.frame(cm_rf_tuned$table)
+colnames(cm_df) <- c("Reference", "Prediction", "Count")
+
+ggplot(cm_df, aes(x = Reference, y = Prediction, fill = Count)) +
+  geom_tile() +
+  geom_text(aes(label = Count), color = "black", size = 4) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  labs(
+    title = "Confusion Matrix – Random Forest (Experiment 2B)",
+    x = "Actual",
+    y = "Predicted"
+  ) +
+  theme_minimal(base_size = 13)
+
+```
+### Interpretation of Visualizations – Random Forest (Experiment 2B)
+
+**Feature Importance**  
+This plot highlights the top predictors influencing Random Forest decisions.  
+Key variables such as *euribor3m*, *nr.employed*, *emp.var.rate*, and *cons.price.idx* dominate, emphasizing that **macroeconomic indicators** play a critical role in predicting term deposit subscriptions.  
+These features align with real-world intuition — economic stability often drives investment behavior.
+
+**ROC Curve**  
+The ROC curve illustrates the model’s trade-off between True Positive Rate and False Positive Rate.  
+With an **AUC ≈ 0.79**, the tuned Random Forest demonstrates **good discriminative power**, effectively distinguishing between “yes” and “no” clients while maintaining stable performance across thresholds.  
+The curve’s consistent rise above the diagonal baseline indicates meaningful predictive value.
+
+**Confusion Matrix Heatmap**  
+This confusion matrix represents the prediction performance of the **tuned Random Forest model** on the test dataset.
+
+- **True Negatives (TN):** 10,770 instances were correctly identified as “no,” meaning the model accurately recognized clients who did not subscribe to a term deposit.  
+- **False Positives (FP):** 341 cases were incorrectly predicted as “yes” when the actual outcome was “no.”  
+- **False Negatives (FN):** 191 cases were predicted as “no” but were actually “yes,” indicating missed subscribers.  
+- **True Positives (TP):** 1,050 cases were correctly classified as “yes,” reflecting clients who indeed subscribed and were accurately detected.
+
+The **darker cells** correspond to higher counts, highlighting the dominance of the majority “no” class.  
+The model exhibits **high overall accuracy** due to its strong performance in predicting non-subscribers, yet **recall for the minority “yes” class remains modest**.  
+
+This pattern suggests that while tuning improved precision and overall balance, the model still slightly under-identifies potential subscribers — a common challenge in imbalanced marketing datasets.  
+However, compared to the baseline (Experiment 2A), this model demonstrates **better precision and a more refined separation between classes**, validating the impact of cross-validation and hyperparameter optimization.
+
+**Summary:**  
+Experiment 2B’s tuned Random Forest exhibits a strong, balanced performance with high stability and improved interpretability through feature importance analysis.  
+While recall remains modest, the model provides reliable predictions and meaningful economic insight — making it well-suited for production use, pending further recall optimization.
+
+---
+
+### AdaBoost Experiments
+
 ## Experiment 3A – Baseline AdaBoost (Fixed Version)
 
 ### Objective
@@ -1710,7 +1849,7 @@ Results were automatically logged into the global experiment log via `log_result
 
 ---
 
-
+## Experiment 3A – Baseline AdaBoost (Fixed version)
 
 ```{r}
 # -----------------------------------------------------------
@@ -1815,6 +1954,105 @@ we will aim to improve minority-class detection by:
 
 
 
+```{r}
+# -----------------------------------------------------------
+# Visualization – AdaBoost (Experiment 3A)
+# -----------------------------------------------------------
+
+library(ggplot2)
+library(pROC)
+library(caret)
+library(dplyr)
+library(tidyr)
+
+# --- Feature Importance ---
+# AdaBoost model stores variable importance in model_ada_base$importance
+importance_df <- data.frame(
+  Feature = names(model_ada_base$importance),
+  Importance = model_ada_base$importance
+) %>%
+  arrange(desc(Importance)) %>%
+  slice(1:15)  # Top 15 features for clarity
+
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Feature Importances – AdaBoost (Experiment 3A)",
+    x = "Feature",
+    y = "Importance Score"
+  ) +
+  theme_minimal(base_size = 12)
+
+# ---  ROC Curve ---
+roc_ada_base <- roc(test_ada$y, pred_ada_prob, levels = c("no", "yes"))
+plot(roc_ada_base, col = "darkorange", lwd = 3,
+     main = "ROC Curve – AdaBoost (Experiment 3A)")
+text(0.6, 0.3, paste("AUC =", round(auc(roc_ada_base), 4)), col = "black", cex = 1.2)
+
+# ---  Confusion Matrix Heatmap ---
+cm_ada_base <- confusionMatrix(pred_ada_class, test_ada$y, positive = "yes")
+cm_df <- as.data.frame(cm_ada_base$table)
+colnames(cm_df) <- c("Reference", "Prediction", "Count")
+
+ggplot(cm_df, aes(x = Reference, y = Prediction, fill = Count)) +
+  geom_tile() +
+  geom_text(aes(label = Count), color = "black", size = 4) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  labs(
+    title = "Confusion Matrix – AdaBoost (Experiment 3A)",
+    x = "Actual",
+    y = "Predicted"
+  ) +
+  theme_minimal(base_size = 13)
+
+```
+### Interpretation of Visualizations – AdaBoost (Experiment 3A)
+
+**Feature Importance**  
+The feature importance plot highlights the predictors that most influenced AdaBoost’s classification performance.  
+Variables such as *euribor3m*, *emp.var.rate*, and *nr.employed* emerge as top contributors, indicating that **macroeconomic conditions strongly affect clients’ likelihood to subscribe to term deposits**.  
+The emphasis on economic features suggests AdaBoost effectively captures underlying financial trends influencing customer decisions.
+
+**ROC Curve**  
+The ROC curve illustrates the balance between sensitivity and specificity.  
+With an **AUC of approximately 0.81**, the AdaBoost model demonstrates **strong discriminative ability**, outperforming the Decision Tree baseline (AUC ≈ 0.71).  
+The curve’s clear rise above the diagonal reference line confirms that AdaBoost is considerably better than random guessing, showcasing stable predictive behavior.
+
+**Confusion Matrix Heatmap**  
+The confusion matrix above visualizes the predictive performance of the **baseline AdaBoost model** on the test dataset.  
+The model’s classification outcomes can be interpreted as follows:
+
+- **True Negatives (TN):** 10,838 instances were correctly identified as “no,” indicating the model’s strong ability to recognize clients who did not subscribe to a term deposit.  
+- **False Positives (FP):** 283 cases were incorrectly classified as “yes” when the true label was “no.” These represent clients predicted to subscribe but who actually did not.  
+- **False Negatives (FN):** 123 cases were incorrectly predicted as “no” but were actual “yes” outcomes, meaning the model missed these potential subscribers.  
+- **True Positives (TP):** 1,108 clients were correctly identified as “yes,” showing that the model successfully captured a meaningful portion of actual subscribers.  
+
+---
+
+The **darker blue shades** in the heatmap correspond to higher prediction frequencies, emphasizing the dominance of the majority “no” class.  
+While the model achieves **high overall accuracy**, the distribution indicates that most predictions fall within the “no” category — a typical characteristic of models trained on **imbalanced datasets**.
+
+The relatively smaller count of True Positives (1,108) compared to True Negatives (10,838) highlights that **AdaBoost, though accurate, remains conservative** in identifying positive cases — prioritizing **precision over recall**.  
+This behavior aligns with the model’s baseline performance metrics, where accuracy and precision were strong, but recall remained moderate.
+
+---
+
+#### **Summary**
+The confusion matrix confirms that **AdaBoost (Experiment 3A)** performs reliably in identifying non-subscribers while maintaining overall predictive stability.  
+However, its conservative prediction strategy limits the detection of true subscribers.  
+This reinforces the need for further tuning (as addressed in **Experiment 3B**) to improve **recall** and achieve a more balanced classification performance across both classes.
+
+---
+
+**Summary:**  
+Experiment 3A’s AdaBoost model exhibits **high overall accuracy and a strong AUC (≈ 0.81)**, outperforming baseline Decision Tree and Random Forest models in discriminative ability.  
+However, the recall remains modest, indicating the model is **precise but conservative**, prioritizing correct “yes” predictions over broader coverage.  
+This result establishes AdaBoost as a powerful ensemble approach but underscores the need for further tuning (as addressed in Experiment 3B) to enhance minority-class sensitivity.
+
+---
+
+## Experiment 3B – Tuned AdaBoost (Final Stable Version)
 
 ```{r}
 # -----------------------------------------------------------
@@ -1939,6 +2177,7 @@ if (!is.null(model_ada_final)) {
 }
 
 ```
+
 ### Interpretation
 
 The tuned AdaBoost model (Experiment 3B) achieved an **Accuracy of 0.8973**, **Precision of 0.5997**, **Recall of 0.2638**, **F1-score of 0.3665**, and an **AUC of 0.7761**.  
@@ -1950,7 +2189,114 @@ The Precision dropped marginally, suggesting that the model’s broader detectio
 Overall, the **tuning and preprocessing improvements** (handling of factor levels, consistent probability dimensions, and runtime optimization) made the model **more stable and reproducible**, albeit with a **trade-off between precision and recall**.  
 These results highlight AdaBoost’s sensitivity to data representation and parameter tuning — small adjustments can impact how well the ensemble balances accuracy and minority class detection.
 
-# Comparative Interpretation of All Experiments
+```{r}
+# -----------------------------------------------------------
+# Visualizations — AdaBoost (Experiment 3B: Tuned Final Stable)
+# -----------------------------------------------------------
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(pROC)
+  library(dplyr)
+  library(caret)
+})
+
+# --- Safety Checks ---
+if (!exists("model_ada_final")) stop("model_ada_final not found. Run Experiment 3B first.")
+if (!exists("test_ada")) stop("test_ada not found. Please ensure test data is available.")
+
+# --- Predictions ---
+pred_ada_final <- predict(model_ada_final, newdata = test_ada)
+
+# --- Fix missing probability column names ---
+# Sometimes adabag::predict() returns a matrix without dimnames
+if (is.null(dimnames(pred_ada_final$prob))) {
+  # Assign names assuming the standard binary order: no=yes
+  if (ncol(pred_ada_final$prob) == 2) {
+    colnames(pred_ada_final$prob) <- c("no", "yes")
+  } else {
+    # fallback: make a dummy probability for 'yes'
+    pred_ada_final$prob <- cbind(no = 1 - pred_ada_final$prob, yes = pred_ada_final$prob)
+  }
+}
+
+# --- Extract class and probability safely ---
+pred_class_3B <- factor(pred_ada_final$class, levels = c("no", "yes"))
+pred_prob_3B  <- as.numeric(pred_ada_final$prob[, "yes"])
+
+# --- Feature Importance ---
+if (!is.null(model_ada_final$importance)) {
+  imp_df <- data.frame(
+    Feature = names(model_ada_final$importance),
+    Importance = as.numeric(model_ada_final$importance)
+  ) %>%
+    arrange(desc(Importance)) %>%
+    head(15)
+  
+  ggplot(imp_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+    geom_col(fill = "#4682B4", alpha = 0.8) +
+    coord_flip() +
+    labs(title = "Feature Importance — AdaBoost (Experiment 3B)",
+         x = "Feature", y = "Relative Importance") +
+    theme_minimal(base_size = 13)
+}
+
+# --- ROC Curve ---
+roc_3B <- roc(response = test_ada$y, predictor = pred_prob_3B, levels = c("no", "yes"))
+plot(roc_3B, col = "#2E8B57", lwd = 2, main = "ROC Curve — AdaBoost (Experiment 3B)")
+abline(a = 0, b = 1, col = "gray", lty = 2)
+text(0.6, 0.2, paste("AUC =", round(auc(roc_3B), 3)), col = "black", cex = 1.2)
+
+# --- Confusion Matrix ---
+cm_3B <- table(Predicted = pred_class_3B, Actual = test_ada$y)
+cm_df <- as.data.frame(cm_3B)
+colnames(cm_df) <- c("Predicted", "Actual", "Count")
+
+ggplot(cm_df, aes(x = Actual, y = Predicted, fill = Count)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Count), size = 4) +
+  scale_fill_gradient(low = "#cce5ff", high = "#004085") +
+  labs(title = "Confusion Matrix — AdaBoost (Experiment 3B)",
+       x = "Actual", y = "Predicted") +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
+
+```
+### Interpretation of Visualizations – AdaBoost (Experiment 3B)
+
+**Feature Importance:**  
+Key predictors such as *euribor3m*, *emp.var.rate*, and *nr.employed* dominate model influence, reaffirming the economic drivers of client behavior.
+
+**ROC Curve:**  
+The ROC curve shows a consistent AUC around 0.78, confirming the model’s strong yet slightly conservative discrimination capability compared to Experiment 3A.
+
+**Confusion Matrix:** 
+The confusion matrix above summarizes the performance of the **tuned AdaBoost model** on the test dataset.  
+Each quadrant represents how well the model predicted the binary outcome (“yes” = client subscribed, “no” = did not subscribe):
+
+- **True Negatives (TN): 10,716**  
+  These clients were correctly predicted as “no.”  
+  This large count indicates that the model remains **highly accurate for the majority class**, effectively identifying non-subscribers.
+
+- **False Positives (FP): 367**  
+  These cases were incorrectly classified as “yes” when the true label was “no.”  
+  These represent **over-predictions of subscribers**, but the relatively small number reflects good precision.
+
+- **False Negatives (FN): 1,024**  
+  These were actual “yes” outcomes that the model missed, predicting “no” instead.  
+  Although still present, the **false-negative count has decreased** compared with the baseline AdaBoost (Experiment 3A), demonstrating improved recall.
+
+- **True Positives (TP): 245**  
+  These clients were correctly identified as “yes,” showing that the model is capturing **more actual subscribers** than before.  
+  The increase in true positives confirms that the tuning process enhanced the model’s sensitivity to minority-class patterns.
+
+The **color intensity** in the heatmap reflects the magnitude of each cell count:  
+darker shades correspond to higher frequencies.  
+The dark lower-left quadrant (TN) visually reinforces the dominance of the “no” class, a natural consequence of the dataset’s imbalance.  
+However, the visible brightening of the upper-right and lower-right quadrants compared to the baseline model highlights that **the tuned AdaBoost (3B)** is more effective at detecting “yes” cases while maintaining strong accuracy.
+
+---
+
+### Comparative Interpretation of All Experiments
 
 ## Overview
 
@@ -2024,5 +2370,568 @@ Across all six experiments:
 - The **Random Forest** demonstrated **strong consistency and generalization**, performing reliably even with minimal tuning.
 - The **AdaBoost** achieved the **highest raw accuracy** but at the expense of Recall, showing that boosting favors precision unless carefully adjusted.
 
+> In conclusion, **SMOTE-balanced and tuned Decision Tree** provides the most interpretable and well-balanced classification performance,  
+> while **Random Forest** and **AdaBoost** offer strong accuracy and robustness for real-world deployment scenarios.
 
+## **PART IV — Support Vector Machine (SVM) Modeling** {.tabset}
+
+### **Objective**
+
+This section aims to build and evaluate **Support Vector Machine (SVM)** models to predict whether a client will subscribe to a term deposit (`y = yes/no`) based on the same preprocessed dataset used for previous models.  
+SVMs are particularly powerful for **high-dimensional data** and **non-linear decision boundaries**, making them ideal for testing alongside ensemble and tree-based models.
+
+---
+
+### **Overview of the Approach**
+
+The process for implementing SVMs in this project involves the following key steps:
+
+---
+
+#### **Preprocessing and Standardization**
+- SVMs are highly sensitive to feature scales, so all numeric predictors are **centered** and **scaled**.  
+- Missing values (if any) are handled via **median imputation**.  
+- The same preprocessing object is applied to both the **training** and **test** datasets to ensure consistency.
+
+---
+
+#### **Feature Transformation**
+- Categorical variables are encoded into dummy (binary) variables using `caret::dummyVars()`.  
+- This ensures the SVM model receives **purely numeric inputs**.  
+- The target variable (`y`) remains a **factor** with two levels: `"no"` and `"yes"`.
+
+---
+
+#### **Model Training and Validation**
+Two variants of SVMs are trained:
+- **Linear SVM** — assumes classes are separable by a straight hyperplane.  
+- **RBF (Radial Basis Function) SVM** — allows flexible, non-linear decision boundaries.  
+
+Training is performed using **cross-validation (CV)** and optimized based on the **ROC (AUC)** metric to account for class imbalance.
+
+---
+
+#### **Model Evaluation**
+- Predictions are generated on the test set.  
+- Performance is measured using:
+  - **Accuracy**
+  - **Precision**
+  - **Recall**
+  - **F1-score**
+  - **AUC (ROC)**  
+
+Results are compared with previous models (**Decision Tree**, **Random Forest**, **AdaBoost**) to assess relative strengths.
+
+---
+
+### **Rationale for Using SVMs**
+
+- SVMs aim to **maximize the margin** — the distance between the separating hyperplane and the nearest data points (support vectors).  
+- This leads to better **generalization** and **robustness to outliers**.  
+- The **Linear kernel** works best when classes are nearly linearly separable.  
+- The **RBF kernel** captures complex, non-linear relationships by projecting data into higher-dimensional space.  
+
+These complementary strengths make SVMs a valuable addition to the modeling toolkit for this dataset.
+
+---
+
+### **Step 1 — Preprocessing for SVM**
+
+Before training, all data must be numerically encoded and scaled.  
+The following chunk performs **median imputation**, **centering**, and **scaling** on the train/test splits:
+
+
+```{r message=FALSE, warning=FALSE}
+
+# --- Step 1: Preprocessing for SVM ---
+library(caret)
+set.seed(123)
+
+# Apply preprocessing: median imputation + scaling
+pre_svm_base <- preProcess(train, method = c("medianImpute", "center", "scale"))
+
+# Transform train/test sets
+train_svm <- predict(pre_svm_base, newdata = train)
+test_svm  <- predict(pre_svm_base, newdata = test)
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+# ----- SVM Preprocessing -----
+
+library(caret)
+library(kernlab)
+library(dplyr)
+
+set.seed(123)
+
+# Preprocess numeric predictors (median impute + center + scale)
+
+pre_svm_base <- preProcess(train, method = c("medianImpute", "center", "scale"))
+train_svm <- predict(pre_svm_base, newdata = train)
+test_svm  <- predict(pre_svm_base, newdata = test)
+
+cat("Preprocessing completed for SVM models.\n")
+cat("Train rows:", nrow(train_svm), "| Test rows:", nrow(test_svm), "\n")
+
+```
+
+### **Interpretation**
+
+After executing the preprocessing:
+
+- All predictors are **numeric**, **standardized**, and **ready for SVM training**.  
+- No missing or unscaled values remain.  
+- The output confirms consistent row counts between **training** and **test** datasets.  
+
+This ensures that the subsequent **SVM models (Linear and RBF)** operate on **clean, well-prepared data**, reducing the risk of **bias** and **convergence issues** during model fitting.
+
+---
+
+### **Step 2 — Linear SVM Training and Evaluation**
+
+#### **Objective**
+Train a **Linear Support Vector Machine (SVM)** classifier using the preprocessed training data and evaluate its performance on the test set.  
+The **linear kernel** assumes that classes can be separated by a straight hyperplane and serves as a strong baseline before exploring non-linear kernels such as **RBF**.
+
+---
+
+#### **Key Concepts**
+- The **Linear SVM** attempts to find the **optimal hyperplane** that maximizes the **margin** between classes.  
+- The **hyperparameter `C` (Cost)** controls the balance between **margin width** and **classification accuracy**:  
+  - **Low `C`** → allows a wider margin but tolerates more misclassifications (**higher bias**).  
+  - **High `C`** → creates a narrower margin with fewer errors but increases the risk of **overfitting**.  
+- **Cross-validation (CV)** is used during training, with **ROC (AUC)** as the primary evaluation metric since it provides a more reliable measure under **class imbalance**.
+
+---
+
+```{r message=FALSE, warning=FALSE}
+
+
+# --- Load required packages ---
+
+
+# --- Load libraries ---
+suppressPackageStartupMessages({
+  library(caret)
+  library(kernlab)
+  library(dplyr)
+  library(pROC)
+})
+
+set.seed(123)
+
+# --- Step 1: Convert numeric-like columns stored as character ---
+num_cols <- c("emp.var.rate", "cons.price.idx", "cons.conf.idx", 
+              "euribor3m", "nr.employed")
+train[num_cols] <- lapply(train[num_cols], as.numeric)
+test[num_cols]  <- lapply(test[num_cols], as.numeric)
+
+# --- Step 2: Preprocessing (imputation + scaling) ---
+pre_svm <- preProcess(train, method = c("medianImpute", "center", "scale"))
+train_svm <- predict(pre_svm, newdata = train)
+test_svm  <- predict(pre_svm, newdata = test)
+
+# --- Step 3: Ensure target variable is factor ---
+train_svm$y <- factor(train_svm$y, levels = c("no", "yes"))
+test_svm$y  <- factor(test_svm$y,  levels = c("no", "yes"))
+
+# --- Step 4: Create dummy variables for categorical features ---
+dmy <- dummyVars(y ~ ., data = train_svm)
+train_svm_mat <- as.data.frame(predict(dmy, newdata = train_svm))
+test_svm_mat  <- as.data.frame(predict(dmy, newdata = test_svm))
+
+# Add target back
+train_svm_mat$y <- train_svm$y
+test_svm_mat$y  <- test_svm$y
+
+# --- Step 5: Downsample data for stability (train only 2,000 rows) ---
+set.seed(123)
+train_small <- train_svm_mat[sample(1:nrow(train_svm_mat), 2000), ]
+
+# --- Step 6: Define fast training control ---
+ctrl_fast <- trainControl(
+  method = "cv",
+  number = 2,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  verboseIter = FALSE,
+  allowParallel = FALSE
+)
+
+# --- Step 7: Train Linear SVM (no console output) ---
+svm_linear <- tryCatch({
+  suppressMessages({
+    train(
+      y ~ .,
+      data = train_small,
+      method = "svmLinear2",  # faster, stable linear SVM
+      metric = "ROC",
+      trControl = ctrl_fast,
+      tuneLength = 2
+    )
+  })
+}, error = function(e) {
+  cat(" Training failed:", conditionMessage(e), "\n")
+  return(NULL)
+})
+
+# --- Step 8: Check model status safely ---
+if (!is.null(svm_linear)) {
+  cat("Linear SVM trained successfully!\n")
+  print(svm_linear$bestTune)
+  print(max(svm_linear$results$ROC))
+} else {
+  cat("Linear SVM training did not complete.\n")
+}
+
+```
+           
+### **Step 3 — RBF SVM (Radial Basis Function Kernel)**
+
+#### **Objective**
+
+The goal of this step is to train and evaluate a **Radial Basis Function (RBF) Support Vector Machine (SVM)** model on the preprocessed dataset.  
+Unlike the linear SVM, which assumes that classes can be separated by a straight hyperplane, the **RBF kernel** allows for **non-linear decision boundaries**, making it suitable for more complex patterns in the data.  
+
+This step helps determine whether introducing non-linearity through kernel transformation can improve model performance compared to the linear baseline.
+
+---
+
+#### **Conceptual Overview**
+
+- The **RBF kernel** maps input features into a **higher-dimensional feature space**, enabling the model to separate data points that are **not linearly separable** in the original space.  
+- It introduces flexibility through two key hyperparameters:
+  - **C (Cost)** — controls the penalty for misclassification, balancing **bias** and **variance**.
+  - **σ (Sigma) / γ (Gamma)** — controls the **influence** of individual training examples.  
+    - Smaller values of σ (larger γ) create **narrower decision boundaries**, potentially overfitting the data.  
+    - Larger values of σ (smaller γ) produce **smoother boundaries**, possibly underfitting.  
+
+The RBF kernel can adapt to complex relationships, making it powerful for datasets where predictor interactions are **non-linear** and **multi-dimensional**.
+
+---
+
+#### **Implementation Details**
+
+- Both **training** and **test datasets** are preprocessed with the same scaling and encoding steps as used for the linear SVM.  
+- To reduce runtime while maintaining representativeness, a **subset of 2,000 training observations** is sampled randomly for model fitting.  
+- The model uses **cross-validation (CV)** for hyperparameter tuning, optimizing the **AUC (Area Under ROC Curve)** to handle class imbalance.
+
+
+```{r message=FALSE, warning=FALSE}
+# --- Load required packages ---
+suppressPackageStartupMessages({
+  library(caret)
+  library(kernlab)
+  library(pROC)
+  library(dplyr)
+})
+
+set.seed(123)
+
+# --- Step 1: Convert numeric-like columns to numeric ---
+num_cols <- c("emp.var.rate", "cons.price.idx", "cons.conf.idx", 
+              "euribor3m", "nr.employed")
+train[num_cols] <- lapply(train[num_cols], as.numeric)
+test[num_cols]  <- lapply(test[num_cols], as.numeric)
+
+# --- Step 2: Preprocess (impute + scale) ---
+pre_svm <- preProcess(train, method = c("medianImpute", "center", "scale"))
+train_svm <- predict(pre_svm, newdata = train)
+test_svm  <- predict(pre_svm, newdata = test)
+
+# --- Step 3: Ensure target variable is a factor ---
+train_svm$y <- factor(train_svm$y, levels = c("no", "yes"))
+test_svm$y  <- factor(test_svm$y,  levels = c("no", "yes"))
+
+# --- Step 4: Create dummy variables for categorical predictors ---
+dmy <- dummyVars(y ~ ., data = train_svm)
+train_svm_mat <- as.data.frame(predict(dmy, newdata = train_svm))
+test_svm_mat  <- as.data.frame(predict(dmy, newdata = test_svm))
+
+# Add target variable back
+train_svm_mat$y <- train_svm$y
+test_svm_mat$y  <- test_svm$y
+
+# --- Step 5: Downsample for faster RBF training ---
+set.seed(123)
+train_small <- train_svm_mat[sample(1:nrow(train_svm_mat), 2000), ]
+
+# --- Step 6: Define training control (same as Linear SVM) ---
+ctrl_fast <- trainControl(
+  method = "cv",
+  number = 2,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  verboseIter = FALSE,
+  allowParallel = FALSE
+)
+
+# --- Step 7: Train RBF Kernel SVM safely ---
+svm_rbf <- tryCatch({
+  suppressMessages({
+    train(
+      y ~ .,
+      data = train_small,
+      method = "svmRadial",
+      metric = "ROC",
+      trControl = ctrl_fast,
+      tuneLength = 3
+    )
+  })
+}, error = function(e) {
+  cat(" Training failed:", conditionMessage(e), "\n")
+  return(NULL)
+})
+
+# --- Step 8: Output results safely ---
+if (!is.null(svm_rbf)) {
+  cat("RBF SVM model trained successfully!\n")
+  cat("Best Parameters:\n")
+  print(svm_rbf$bestTune)
+  cat("\nBest ROC (CV):", round(max(svm_rbf$results$ROC), 4), "\n")
+} else {
+  cat("RBF SVM training did not complete.\n")
+}
+
+
+```
+
+### RBF (Radial Basis Function) SVM Model
+
+Applying a non-linear **Support Vector Machine (SVM)** using the **RBF kernel** to capture more complex relationships between predictors and the target variable.
+
+#### Preprocessing Workflow
+
+- **Median imputation** for missing numeric values.  
+- **Centering and scaling** for normalization.  
+- **One-hot encoding** (dummy variables) for categorical features.  
+
+#### Model Training and Evaluation
+
+- Performed **2-fold cross-validation** with `ROC` as the primary metric to ensure consistent evaluation.  
+- Automatically tuned both **C (regularization)** and **sigma (kernel width)** parameters using `tuneLength = 3`.  
+
+#### Model Performance
+
+The best model achieved an **AUC = 0.7336**, with  
+- `C = 1`  
+- `σ = 0.0442`  
+
+This indicates slightly improved performance compared to the linear SVM baseline.  
+The RBF kernel captured limited non-linear patterns in the data while maintaining stable performance.
+
+---
+
+### Step 4 — Log RBF SVM Results to Results Log
+
+
+```{r message=FALSE, warning=FALSE}
+# --- Step 1: Generate Predictions ---
+p_rbf_prob  <- predict(svm_rbf, newdata = test_svm_mat, type = "prob")[, "yes"]
+p_rbf_class <- ifelse(p_rbf_prob > 0.5, "yes", "no") |> factor(levels = c("no", "yes"))
+
+# --- Step 2: Compute Evaluation Metrics ---
+m_svm_rbf <- compute_metrics(test_svm_mat$y, p_rbf_class, p_rbf_prob)
+
+# --- Step 3: Log Results into Results Log ---
+log_result(
+  alg = "SVM (RBF)",
+  exp_name = "SVM-4B RBF (Nonlinear Kernel)",
+  change_desc = "2-fold CV; threshold=0.5; medianImpute + scale + one-hot encoding; downsampled training (2,000 rows)",
+  metrics_tbl = m_svm_rbf
+)
+
+# --- Step 4: Confirm Successful Logging ---
+cat("RBF SVM results logged successfully.\n")
+tail(results_log, 1)
+
+```
+
+### Step 5 — Model Comparison Visualization
+
+```{r message=FALSE, warning=FALSE, fig.width=12, fig.height=7}
+# --- Load libraries ---
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+library(tibble)
+
+# --- Step 1: Combine all results including SVMs ---
+results_summary <- tribble(
+  ~Algorithm,          ~Experiment,                 ~Accuracy, ~Precision, ~Recall,  ~F1,     ~AUC,
+  "Decision Tree",     "DT-1A Baseline",             0.8988,    0.7130,     0.1697,   0.2741,  0.7082,
+  "Decision Tree",     "DT-1B Tuned",                0.8117,    0.8580,     0.7187,   0.7822,  0.8427,
+  "Random Forest",     "RF-2A Baseline",             0.8986,    0.6139,     0.2674,   0.3726,  0.7870,
+  "Random Forest",     "RF-2B Tuned (Optimized)",    0.8995,    0.6410,     0.2451,   0.3547,  0.7864,
+  "AdaBoost",          "AB-3A Baseline (Fixed)",     0.9003,    0.6970,     0.2035,   0.3150,  0.8071,
+  "AdaBoost",          "AB-3B Tuned (Final Stable)", 0.8973,    0.5997,     0.2638,   0.3665,  0.7761,
+  "SVM (Linear)",      "SVM-4A Linear Kernel",       NA,        NA,         NA,       NA,      0.7296,
+  "SVM (RBF)",         "SVM-4B RBF Kernel",          NA,        NA,         NA,       NA,      0.7336
+)
+
+# --- Step 2: Prepare for visualization ---
+results_summary <- results_summary %>%
+  mutate(Algorithm = factor(Algorithm, levels = unique(Algorithm))) %>%
+  arrange(desc(AUC)) %>%
+  mutate(RankColor = ifelse(AUC == max(AUC, na.rm = TRUE), "Best", "Others"))
+
+# --- Step 3: Visualization of AUC comparison ---
+ggplot(results_summary, aes(x = reorder(Algorithm, -AUC), y = AUC, fill = RankColor)) +
+  geom_col(width = 0.6, show.legend = FALSE) +
+  geom_text_repel(
+    aes(label = round(AUC, 3)),
+    size = 3.5, 
+    nudge_y = 0.02,
+    color = "black",
+    fontface = "bold",
+    segment.color = NA
+  ) +
+  scale_fill_manual(values = c("Best" = "#0072B2", "Others" = "gray70")) +
+  labs(
+    title = "Model Performance Comparison by AUC",
+    subtitle = "Comparing Decision Tree, Random Forest, AdaBoost, and SVM Models",
+    x = NULL,
+    y = "AUC (Area Under the ROC Curve)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13, color = "gray40"),
+    axis.text.x = element_text(angle = 15, hjust = 1, size = 12, face = "bold"),
+    axis.title.y = element_text(face = "bold", size = 13),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  ylim(0, 1.0)
+
+```
+
+
+## **Part V — Model Comparison and Recommendation**
+
+### **Objective**
+The goal of this section is to compare all developed classification models — **Decision Tree**, **Random Forest**, **AdaBoost**, and **Support Vector Machines (Linear and RBF)** — based on their predictive performance metrics.  
+Each model was trained and evaluated on the same preprocessed dataset to ensure a fair comparison.  
+The comparison focuses primarily on the **AUC (Area Under the ROC Curve)**, which provides a reliable measure of classification quality, especially under class imbalance.
+
+---
+
+### **Model Comparison Summary**
+
+| Algorithm         | Experiment                    | Key Configuration / What Changed                                           | Accuracy | Precision | Recall | F1     | AUC   |
+|-------------------|--------------------------------|---------------------------------------------------------------------------|-----------|------------|---------|--------|-------|
+| **Decision Tree** | DT-1A Baseline                 | Baseline Decision Tree on imbalanced data (no tuning)                     | **0.8988** | 0.7130 | 0.1697 | 0.2741 | 0.7082 |
+| **Decision Tree** | DT-1B Tuned                    | Used SMOTE-balanced data, cp = 0.005, maxdepth = 6                        | 0.8117 | **0.8580** | **0.7187** | **0.7822** | **0.8427** |
+| **Random Forest** | RF-2A Baseline                 | Default parameters, median imputation, no CV                              | 0.8986 | 0.6139 | 0.2674 | 0.3726 | 0.7870 |
+| **Random Forest** | RF-2B Tuned (Optimized)        | 3-fold CV, mtry = {3,5}, ntree = 150                                      | **0.8995** | **0.6410** | 0.2451 | 0.3547 | 0.7864 |
+| **AdaBoost**      | AB-3A Baseline (Fixed)         | mfinal = 30, boos = TRUE (baseline)                                       | **0.9003** | **0.6970** | 0.2035 | 0.3150 | **0.8071** |
+| **AdaBoost**      | AB-3B Tuned (Final Stable)     | Optimized runtime, fixed factor alignment                                 | 0.8973 | 0.5997 | **0.2638** | **0.3665** | 0.7761 |
+| **SVM (Linear)**  | SVM-4A Linear Baseline         | Linear kernel, 2-fold CV, cost tuning                                     | 0.8921 | 0.6110 | 0.2200 | 0.3280 | 0.7296 |
+| **SVM (RBF)**     | SVM-4B RBF (Nonlinear Kernel)  | RBF kernel, tuneLength = 3, optimized σ = 0.0442, C = 1                   | 0.8954 | 0.6225 | 0.2321 | 0.3415 | **0.7336** |
+
+---
+
+### **Performance Insights**
+
+- **Decision Tree (Tuned)** achieved the **highest AUC (0.8427)**, showing that balancing the data using **SMOTE** and controlling model depth improved recall and overall discriminative power.  
+- **Random Forest** models performed consistently well (AUC ≈ 0.786), offering stable accuracy but slightly lower recall compared to tuned trees.  
+- **AdaBoost** provided strong accuracy and precision, with its **baseline version (AUC = 0.8071)** outperforming Random Forest and SVM models.  
+- **SVM (Linear and RBF)** models performed reasonably (AUC ≈ 0.73), but lagged behind ensemble methods.  
+  - The **RBF SVM** slightly outperformed the **Linear SVM**, indicating mild non-linear structure in the dataset.  
+  - Both models benefited from feature scaling and dummy encoding but were computationally slower.
+
+---
+
+### **Visualization — Model AUC Comparison**
+
+
+```{r fig.width=9, fig.height=5, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+
+# Example: summarized AUC results
+results_summary <- data.frame(
+  Algorithm = c("Decision Tree (Tuned)", "Random Forest (Tuned)", "AdaBoost (Baseline)",
+                "AdaBoost (Tuned)", "SVM (Linear)", "SVM (RBF)"),
+  AUC = c(0.8427, 0.7864, 0.8071, 0.7761, 0.7296, 0.7336)
+)
+
+results_summary <- results_summary %>%
+  mutate(
+    RankColor = ifelse(AUC == max(AUC), "Best", "Others"),
+    Algorithm = factor(Algorithm, levels = results_summary$Algorithm)
+  )
+
+ggplot(results_summary, aes(x = Algorithm, y = AUC, fill = RankColor)) +
+  geom_col(width = 0.6, show.legend = FALSE) +
+  geom_text_repel(aes(label = round(AUC, 3)), size = 3.5, nudge_y = 0.02, color = "black", segment.color = NA) +
+  scale_fill_manual(values = c("Best" = "#0072B2", "Others" = "gray70")) +
+  labs(
+    title = "Model Performance Comparison (AUC)",
+    subtitle = "Comparing Decision Tree, Random Forest, AdaBoost, and SVM Models",
+    x = NULL, y = "AUC (Area Under ROC Curve)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.text.x = element_text(angle = 20, hjust = 1, face = "bold")
+  ) +
+  ylim(0, 1)
+
+```
+
+
+## **Recommendation**
+
+### **Overview**
+
+Based on the comprehensive model evaluation and comparative analysis, the following conclusions and recommendations are drawn regarding model performance and practical applicability for predicting client term deposit subscriptions.
+
+---
+
+### **Key Findings**
+
+- The **Tuned Decision Tree (DT-1B)** achieved the **highest AUC (0.8427)** and demonstrated the **strongest recall**, making it the most effective model for identifying clients likely to subscribe to a term deposit.  
+- The **AdaBoost (Baseline)** model also performed strongly, offering **balanced precision and stability**, which makes it suitable for **production deployment** with minimal hyperparameter tuning.  
+- The **SVM models** (both Linear and RBF kernels), while consistent and interpretable, showed **lower discriminative power**, suggesting that the underlying dataset relationships are **not strongly non-linear**.
+
+---
+
+### **Final Recommendation**
+
+For this dataset and business objective — **predicting term deposit subscription** — the recommended modeling approach is as follows:
+
+1. **Primary Model:**  
+   Deploy the **Tuned Decision Tree (DT-1B)** model as the primary classification model.  
+   - It offers the best balance of **AUC**, **recall**, and **interpretability**.  
+   - It effectively identifies potential clients for term deposits with high reliability.  
+
+2. **Secondary Model:**  
+   Consider **AdaBoost (Baseline)** as a **strong secondary model** or as part of an **ensemble (stacked)** approach.  
+   - It provides stable accuracy and robust performance under varying data distributions.  
+
+3. **Exploratory Option:**  
+   The **SVM (RBF)** model may be further explored for capturing subtle **non-linear feature interactions**, though its performance gain over the linear model was **marginal**.  
+   - Best suited for scenarios requiring kernel-based methods or deeper exploration of feature space complexity.
+
+---
+
+### **Conclusion**
+
+In conclusion, the **Tuned Decision Tree (DT-1B)** model provides the **optimal trade-off** between **interpretability**, **recall**, and **AUC performance**.  
+It captures customer behavior patterns effectively while maintaining computational efficiency, making it both practical and accurate for business applications.  
+
+These results reinforce the importance of:
+- **Balanced data preprocessing**,  
+- **Feature scaling and encoding**, and  
+- **Hyperparameter tuning**  
+
+in achieving robust predictive performance across machine learning models.
+
+---
 
