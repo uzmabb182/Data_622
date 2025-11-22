@@ -1,0 +1,533 @@
+---
+title: "Text_ML_Data622"
+author: "Mubashira Qari"
+date: "2025-11-02"
+output: html_document
+---
+
+```{r}
+# Install packages if not already installed
+packages <- c("dplyr", "tidyr", "stringr", "tidytext",
+              "tm", "SnowballC", "text2vec",
+              "Matrix", "caret", "e1071", "glmnet", "ggplot2", "pROC")
+new_pkgs <- packages[!(packages %in% installed.packages()[,"Package"])]
+if(length(new_pkgs)) install.packages(new_pkgs)
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tidytext)
+library(tm)
+library(SnowballC)
+library(text2vec)
+library(Matrix)
+library(caret)
+library(e1071)   # NaiveBayes + SVM (caret also wraps these)
+library(ggplot2)
+library(pROC)
+
+```
+
+tidytext: tokenization, stopwords, etc. using tidyverse style
+
+tm / SnowballC: classic text cleaning & stemming
+
+text2vec: builds fast sparse TF-IDF matrices, good for ML
+
+caret: splits data, trains models, evaluates
+
+PART 1. Example data
+
+```{r}
+
+incidents_df <- tibble(
+  sys_id = c("INC001","INC002","INC003","INC004","INC005","INC006"),
+  short_description = c(
+    "VPN access failing for remote user after password reset",
+    "Email server down, cannot send or receive messages company-wide",
+    "Database connection timeout on finance reporting dashboard",
+    "Laptop blue screen when launching Teams video call",
+    "Network latency and packet loss in APAC region office WAN link",
+    "Access denied to shared drive after role change"
+  ),
+  category = c(
+    "Access",
+    "Messaging",
+    "Database",
+    "Desktop",
+    "Network",
+    "Access"
+  )
+)
+
+```
+
+
+```{r}
+incidents_big <- incidents_df %>%
+  slice(rep(1:n(), each = 100))  # repeat each row 100 times
+
+```
+
+Goal: learn to predict category from short_description.
+
+PART 2. Tokenization, cleaning, normalization
+
+Tokenization = split text into words.
+Stopword removal = drop common words that don’t carry meaning (“the”, “and”, “to”).
+Lowercasing, punctuation removal, numbers removal = standard text cleanup.
+Stemming/lemmatization = reduce words to base form: “failing”, “failed”, “fails” → “fail”.
+
+We’ll do this using tidytext first because it's very clear.
+
+```{r}
+# 2.1 basic normalization: lowercase, remove non-letter junk
+clean_incidents <- incidents_df %>%
+  mutate(short_description_clean = short_description %>%
+           str_to_lower() %>%                               # lowercase
+           str_replace_all("[^a-z0-9 ]", " ") %>%           # remove punctuation/symbols
+           str_replace_all("\\s+", " ") %>%                 # collapse multiple spaces
+           str_trim()
+  )
+
+clean_incidents
+
+```
+
+Explanation:
+
+str_to_lower(): models shouldn’t treat "VPN" vs "vpn" as different tokens, unless you care about capitalization.
+
+str_replace_all("[^a-z0-9 ]"," "): remove punctuation, slashes, commas, etc. We keep numbers because “401 error” might be important.
+
+Trim and collapse spaces so we don’t end up with "" tokens.
+
+Now: tokenize to 1-word tokens (unigrams), remove stopwords, stem.
+
+```{r}
+data("stop_words")  # from tidytext
+
+tokens_df <- clean_incidents %>%
+  select(sys_id, category, short_description_clean) %>%
+  unnest_tokens(
+    word,
+    short_description_clean,
+    token = "words" # splits on space/punct
+  ) %>%
+  anti_join(stop_words, by = "word") %>%                 # remove stopwords
+  mutate(word = wordStem(word, language = "en")) %>%     # stemming using Snowball
+  filter(str_detect(word, "[a-z]"))                      # drop tokens that aren't alphabetic
+
+tokens_df
+
+```
+
+What we have now:
+
+One row per (incident, word)
+
+Common junk removed
+
+“failing” and “failed” both become “fail”
+
+Stopwords like “for”, “after”, “and” removed
+
+If you prefer lemmatization (true dictionary base forms like “denied” → “deny”), R doesn’t have a great base lemmatizer in base packages. Stemming is usually fine at this stage.
+
+PART 3. Create Document-Term Matrix (DTM)
+
+We need to convert text into numeric features ML can understand.
+We’ll build:
+
+Bag of Words: counts of each word per ticket
+
+TF-IDF: re-weights rare but important words higher
+
+First: get term counts per incident.
+
+```{r}
+term_counts <- tokens_df %>%
+  count(sys_id, word) %>%     # how many times each word appears in each ticket
+  ungroup()
+
+term_counts
+
+```
+
+Now pivot from long format to wide (DTM: each row = ticket, each column = token):
+
+```{r}
+
+dtm_counts <- term_counts %>%
+  pivot_wider(
+    names_from = word,
+    values_from = n,
+    values_fill = list(n = 0)
+  )
+
+dtm_counts
+
+```
+But this is still a regular data frame. For ML, especially SVM/Naive Bayes, we usually want:
+
+Sparse matrix (efficient for thousands of tokens)
+
+TF-IDF weighting (term importance)
+
+We’ll now compute TF-IDF manually using tidytext, then convert to sparse.
+
+```{r}
+
+tf_idf_df <- term_counts %>%
+  bind_tf_idf(term = word, document = sys_id, n = n)
+
+tf_idf_df
+
+```
+This gives you:
+
+tf: term frequency within a document
+
+idf: inverse document frequency (how rare across all docs)
+
+tf_idf: tf * idf (final weight)
+
+Now pivot TF-IDF into matrix form:
+
+```{r}
+
+dtm_tfidf <- tf_idf_df %>%
+  select(sys_id, word, tf_idf) %>%
+  pivot_wider(
+    names_from = word,
+    values_from = tf_idf,
+    values_fill = list(tf_idf = 0)
+  )
+
+dtm_tfidf
+
+```
+Last: join the label (category) back in.
+
+```{r}
+model_df <- clean_incidents %>%
+  select(sys_id, category) %>%
+  left_join(dtm_tfidf, by = "sys_id")
+
+model_df
+
+```
+
+At this point:
+
+model_df$category is the target
+
+All other columns are numeric TF-IDF features
+
+We are now ready to train models.
+
+PART 4. Split train/test
+
+Important so we can measure generalization.
+
+```{r}
+library(caret)
+
+set.seed(123)
+model_df$category <- factor(model_df$category)
+
+train_index <- createDataPartition(model_df$category, p = 0.8, list = FALSE)
+train_df <- model_df[train_index, ]
+test_df  <- model_df[-train_index, ]
+
+x_train <- train_df %>% select(-sys_id, -category)
+y_train <- train_df$category
+
+x_test  <- test_df %>% select(-sys_id, -category)
+y_test  <- test_df$category
+
+```
+
+
+```{r}
+set.seed(123)
+
+# caret wants the target as factor
+model_df$category <- factor(model_df$category)
+
+# create train/test index (80/20 split)
+train_index <- createDataPartition(model_df$category, p = 0.8, list = FALSE)
+
+train_df <- model_df[train_index, ]
+test_df  <- model_df[-train_index, ]
+
+# Separate predictors and labels
+x_train <- train_df %>% select(-sys_id, -category)
+y_train <- train_df$category
+
+x_test  <- test_df %>% select(-sys_id, -category)
+y_test  <- test_df$category
+
+```
+Why?
+
+We don’t train and test on the same data. Otherwise we’d just be memorizing.
+
+Note: With only 6 rows of toy data, the split won’t be stable. In real ServiceNow data you might have thousands of incidents, which is perfect.
+
+PART 5. Train Model 1: Naive Bayes
+
+Why Naive Bayes works well for text:
+
+It assumes each word contributes independently to the class.
+
+It’s fast and often surprisingly strong for text classification.
+
+We’ll let caret train the model with method = "naive_bayes".
+
+```{r}
+# --- Load / Install Required Packages ---
+if (!require(caret)) install.packages("caret", dependencies = TRUE)
+if (!require(e1071)) install.packages("e1071")     # caret depends on this for Naive Bayes
+if (!require(MLmetrics)) install.packages("MLmetrics")
+
+library(caret)
+library(e1071)
+library(MLmetrics)
+library(doParallel)
+
+```
+
+
+```{r}
+# Remove zero-variance predictors first
+nzv <- nearZeroVar(x_train)
+x_train <- x_train[, -nzv]
+x_test  <- x_test[, -nzv]
+
+# Ensure serial execution (avoid parallel errors)
+library(doParallel)
+registerDoSEQ()
+
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,  # now safe because we have enough data
+  classProbs = TRUE,
+  summaryFunction = multiClassSummary
+)
+
+# Disable kernel density; use Laplace smoothing
+nb_grid <- expand.grid(
+  usekernel = FALSE,
+  laplace = 1,
+  adjust = 1
+)
+
+nb_model <- train(
+  x = x_train,
+  y = y_train,
+  method = "naive_bayes",
+  trControl = ctrl,
+  tuneGrid = nb_grid
+)
+
+nb_model
+
+```
+What’s happening:
+
+caret automatically handles tuning the naive Bayes parameters
+
+cross-validation means: split training set into folds, train on 4/5, validate on 1/5, rotate. This protects you from overfitting.
+
+Evaluate on test set:
+
+```{r}
+nb_pred <- predict(nb_model, newdata = x_test)
+confusionMatrix(nb_pred, y_test)
+
+```
+
+Interpretation:
+
+Confusion matrix tells you which categories you're predicting correctly vs confusing.
+
+For imbalanced data (e.g., “Access” is very common), look at per-class recall.
+
+PART 6. Train Model 2: SVM
+
+Why SVM for text:
+
+Works well in high-dimensional sparse spaces (exactly what TF-IDF creates).
+
+Often competitive with deep learning for short text like ticket titles.
+
+```{r}
+svm_model <- train(
+  x = x_train,
+  y = y_train,
+  method = "svmLinear",   # linear SVM is typical for text
+  trControl = ctrl
+)
+
+svm_model
+
+```
+
+Predict + evaluate:
+
+```{r}
+svm_pred <- predict(svm_model, newdata = x_test)
+confusionMatrix(svm_pred, y_test)
+
+```
+
+What to compare:
+
+Overall Accuracy (but careful if imbalanced)
+
+Per-class Recall (did we learn rare classes?)
+
+Kappa (agreement beyond chance)
+
+PART 7. (Optional) Probability curves / ROC
+
+If you have a binary classification (“Major Incident” yes/no or “Security Incident” yes/no), you can compare ROC and AUC:
+
+```{r}
+# This only works if you have exactly 2 classes in y_test
+if (nlevels(y_test) == 2) {
+  svm_probs <- predict(svm_model, newdata = x_test, type = "prob")[,2]
+  roc_obj <- roc(response = y_test, predictor = svm_probs)
+  plot(roc_obj, main = "SVM ROC Curve")
+  auc(roc_obj)
+}
+
+```
+
+For multiclass, you can get per-class ROC by treating one class as “positive” vs all others.
+
+PART 8. Scaling up using text2vec (production style)
+
+The tidytext path we walked is super clear to learn.
+In production (thousands+ tickets), use text2vec because it:
+
+Streams text (doesn’t need to build huge wide data frame in memory first)
+
+Builds a sparse matrix directly
+
+Fits naturally with machine learning algorithms that expect matrices
+
+High-level text2vec workflow:
+
+Prepare vectorizer (tokenization rules, stopword removal, n-grams)
+
+Build vocabulary
+
+Create document-term matrix
+
+Transform to TF-IDF
+
+Train model on sparse Matrix
+
+Sketch:
+
+```{r}
+# 8.1 Prepare the text (lowercase etc.)
+text_vec <- clean_incidents$short_description_clean
+
+# labels
+labels_vec <- factor(clean_incidents$category)
+
+# 8.2 Tokenizer function
+tok_fun <- word_tokenizer  # provided by text2vec
+
+it <- itoken(
+  text_vec,
+  tokenizer = tok_fun,
+  progressbar = FALSE
+)
+
+# 8.3 Build vocabulary and prune stopwords
+vocab <- create_vocabulary(it, stopwords = stop_words$word) %>%
+  prune_vocabulary(term_count_min = 2)  # keep terms that appear >=2 times
+
+# 8.4 Vectorizer
+vectorizer <- vocab_vectorizer(vocab)
+
+# 8.5 Build Document-Term Matrix (counts)
+dtm <- create_dtm(it, vectorizer)
+
+# 8.6 TF-IDF transform
+tfidf_transformer <- TfIdf$new()
+dtm_tfidf_mat <- tfidf_transformer$fit_transform(dtm)
+# NOTE: dtm_tfidf_mat is a sparse Matrix::dgCMatrix
+
+# 8.7 Train linear model on sparse matrix
+svm_model_sparse <- train(
+  x = as.matrix(dtm_tfidf_mat),
+  y = labels_vec,
+  method = "svmLinear",
+  trControl = ctrl
+)
+svm_model_sparse
+
+```
+
+This version is what you'd actually use at scale:
+
+Works with 10k, 100k+ tickets
+
+No manual pivot_wider
+
+Efficient memory usage
+
+RECAP / MENTAL MODEL
+
+Here’s the “story” you should remember for text ML:
+
+Step 1. Collect text + label
+short_description → "VPN access failing..."
+category → "Access"
+
+Step 2. Clean text
+lowercase, strip punctuation, remove stopwords like "the", stem words to base
+
+Step 3. Tokenize
+turn each ticket into bag of words:
+["vpn","access","fail","remot","password","reset",...]
+
+Step 4. Represent as numbers
+use TF-IDF: high weight for words that are rare overall but important in that ticket
+Result: big sparse matrix of numbers
+
+Step 5. Split into train/test
+never evaluate on training data only
+
+Step 6. Train classifier
+Naive Bayes (probabilistic, fast)
+SVM (large-margin, strong for text)
+
+Step 7. Evaluate
+confusion matrix, recall, AUC (if binary)
+
+Step 8. Improve
+
+Add bigrams ("password reset", "blue screen")
+
+Handle class imbalance (SMOTE)
+
+Remove noisy tickets like "test please ignore"
+
+ACTION FOR YOU
+
+You can paste the full pipeline (Parts 0–7) into RStudio and run it with your incident export (sys_id, short_description, category or assignment_group). The only thing you’d change is: load your real CSV instead of the toy example.
+
+When you’re ready, I can:
+
+Modify this pipeline to work when you do NOT have a category yet (i.e. use clustering to discover topics instead of classification).
+
+Add SMOTE for imbalanced categories.
+
+Add bigrams/trigrams like "password reset", "email server".
+

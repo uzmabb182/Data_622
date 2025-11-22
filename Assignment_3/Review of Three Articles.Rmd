@@ -47,7 +47,7 @@ Focusing on the comparison between Article 1 (Medium) and Article 2 (GeeksforGee
 | Context                      | Broad comparative discussion of SVM vs Decision Tree across data types | Specific empirical study on text classification (20 Newsgroups)    |
 | Algorithm performance        | SVM generally preferred for high-dimension, complex datasets | SVM empirically out-performs Decision Tree on text data            |
 | Data type & problem          | Various supervised tasks (general)                          | Text classification – high-dimensional sparse features             |
-| Interpretability emphasis    | Decision Trees valued for ease of interpretation            | Emphasises performance metrics; Decision Tree weaker in this context |
+| Interpretability emphasis    | Decision Trees valued for ease of interpretation            | Emphasizes performance metrics; Decision Tree weaker in this context |
 | Practical guidance           | Emphasises selection based on data and use case             | Offers concrete empirical evidence favouring SVM for text          |
 
 ### Key Insights  
