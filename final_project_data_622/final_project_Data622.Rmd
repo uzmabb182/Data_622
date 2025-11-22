@@ -2,29 +2,83 @@
 title: "Final_Project_Data622"
 author: "Mubashira Qari"
 date: "2025-11-22"
-output: html_document
+output:
+ html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+ pdf_document:
+    toc: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)   # data manipulation & visualization
+library(lubridate)   # working with dates
+library(factoextra)  # clustering & PCA visualization
+library(cluster)     # clustering utilities
+library(corrplot)    # correlation heatmaps
+library(dplyr)
+library(psych)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+library(corrplot)
+library(ggpubr)
+library(naniar)     # for missing value visualization
+library(DataExplorer) # optional: automated EDA
+library(forcats)
+library(caret)
+library(recipes)
+library(themis)
+library(smotefamily)
+
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r warning=FALSE}
+# Load Dataset
 
-```{r cars}
-summary(cars)
+url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/refs/heads/main/final_project_data_622/ecommerce_sales.csv"
+ecom_df <- read.csv(url, stringsAsFactors = FALSE)
+head(ecom_df)
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+glimpse(ecom_df)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(dplyr)
+library(lubridate)
+
+ecom_df <- ecom_df %>%
+  mutate(
+    # dates
+    order_date = ymd(order_date),   # "2023-12-23" → Y-m-d, so use ymd()
+
+    # categorical variables
+    category        = factor(category),
+    payment_method  = factor(payment_method),
+    region          = factor(region),
+    returned        = factor(returned),
+    customer_gender = factor(customer_gender),
+
+    # numeric variables (safe to re-cast even if already numeric)
+    price              = as.numeric(price),
+    discount           = as.numeric(discount),
+    quantity           = as.numeric(quantity),
+    delivery_time_days = as.numeric(delivery_time_days),
+    total_amount       = as.numeric(total_amount),
+    shipping_cost      = as.numeric(shipping_cost),
+    profit_margin      = as.numeric(profit_margin),
+    customer_age       = as.numeric(customer_age)
+  )
+
+glimpse(ecom_df)
+
+```
+
