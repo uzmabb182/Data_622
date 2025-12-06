@@ -10,32 +10,36 @@ output:
  pdf_document:
     toc: true
 ---
+Choice of methodologies:
+
+Chapter 1–10 method: Decision Tree (CART / rpart) — interpretable, good baseline for classification problems.
+
+Chapter 11–15 method: Gradient Boosting (xgboost / gbm) — a powerful ensemble boosting method to improve predictive accuracy.
+
+Problem statement (short)
+Predict whether an e-commerce order will be returned (returned column: Yes/No) using order, product, price, shipping, and customer features. 
+Business objective: reduce returns by identifying high-risk orders so interventions (quality checks, different shipping, better product descriptions) can be targeted.
+
+1. Setup — packages and seed
 
 ```{r message=FALSE, warning=FALSE}
 
-library(tidyverse)   # data manipulation & visualization
-library(lubridate)   # working with dates
-library(factoextra)  # clustering & PCA visualization
-library(cluster)     # clustering utilities
-library(corrplot)    # correlation heatmaps
-library(dplyr)
-library(psych)
-library(ggplot2)
-library(plotly)
-library(tidyr)
-library(corrplot)
-library(ggpubr)
-library(naniar)     # for missing value visualization
-library(DataExplorer) # optional: automated EDA
-library(forcats)
+library(tidyverse)
+library(lubridate)
 library(caret)
+library(rpart)
+library(rpart.plot)
+library(xgboost)
+library(pROC)
 library(recipes)
-library(themis)
-library(smotefamily)
+library(yardstick)
+library(vip)        # variable importance for xgboost
+set.seed(1234)
 
 ```
 
-
+Explanation: load tidy tools for data prep, caret for modeling workflow and resampling, rpart for decision trees, xgboost for boosting, pROC for ROC/AUC evaluation. 
+set.seed() ensures reproducible splits and resampling.
 
 ```{r warning=FALSE}
 # Load Dataset
@@ -45,11 +49,71 @@ ecom_df <- read.csv(url, stringsAsFactors = FALSE)
 head(ecom_df)
 
 ```
-
+2. Problem Definition
 
 ```{r}
-glimpse(ecom_df)
+# Business problem: reduce returns by predicting "returned" = "Yes" or "No"
+# Data science problem: binary classification (returned vs not returned)
+
 ```
+
+Explanation: map business problem to binary classification.
+
+3. Data cleaning & feature engineering
+
+```{r}
+# assume ecom_df is already in the workspace
+# initial glance
+glimpse(ecom_df)
+
+# 3.1 Convert types properly (fixes you used earlier)
+ecom_df <- ecom_df %>%
+  mutate(
+    order_date = ymd(order_date),     # dates are like "2023-12-23"
+    category = factor(category),
+    payment_method = factor(payment_method),
+    region = factor(region),
+    returned = factor(returned, levels = c("No","Yes")), # ensure No first
+    customer_gender = factor(customer_gender)
+  ) 
+
+# 3.2 Basic feature engineering
+ecom_df <- ecom_df %>%
+  mutate(
+    order_month = factor(month(order_date, label = TRUE)),
+    order_wday = factor(wday(order_date, label = TRUE)),
+    unit_price = if_else(quantity > 0, total_amount / quantity, price), 
+      # fallback if quantity 0 — guard against divide by zero
+    high_value_order = if_else(total_amount > quantile(total_amount, 0.75, na.rm=TRUE), "Yes","No"),
+    high_value_order = factor(high_value_order),
+    age_group = case_when(
+      customer_age < 25 ~ "Under25",
+      customer_age >= 25 & customer_age < 45 ~ "25to44",
+      customer_age >= 45 & customer_age < 65 ~ "45to64",
+      TRUE ~ "65plus"
+    ),
+    age_group = factor(age_group)
+  )
+
+# 3.3 Check for NA's and simple imputation
+summary_df <- ecom_df %>% summarise_all(~ sum(is.na(.)))
+print(summary_df)
+# If any relevant numeric NA's appear, simple impute (median)
+num_vars <- c("price","discount","quantity","delivery_time_days","total_amount","shipping_cost","profit_margin","customer_age","unit_price")
+for (v in num_vars) {
+  if (any(is.na(ecom_df[[v]]))) {
+    median_val <- median(ecom_df[[v]], na.rm=TRUE)
+    ecom_df[[v]][is.na(ecom_df[[v]])] <- median_val
+  }
+}
+
+```
+Explanation: convert order_date using ymd(). 
+Extract month and weekday as categorical features since return behavior may vary by season/day. 
+Create unit_price and high_value_order as potentially predictive features. Group ages. 
+Handle missing numeric values via median imputation (simple and acceptable for a project).
+
+4. Exploratory Data Analysis (EDA)
 
 ```{r}
 library(dplyr)
@@ -81,4 +145,280 @@ ecom_df <- ecom_df %>%
 glimpse(ecom_df)
 
 ```
+
+
+```{r}
+summary(ecom_df)
+```
+
+
+```{r}
+numeric_vars <- c("price","discount","quantity",
+"delivery_time_days","total_amount",
+"shipping_cost","profit_margin","customer_age")
+
+ecom_df %>%
+select(all_of(numeric_vars)) %>%
+pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+ggplot(aes(value)) +
+geom_histogram(fill = "steelblue", color = "black", bins = 20) +
+facet_wrap(~ variable, scales = "free") +
+labs(
+title = "Distribution of Key Numeric Variables",
+x = "Value",
+y = "Count"
+) +
+theme_minimal()
+
+```
+```{r}
+ecom_df %>%
+count(category) %>%
+ggplot(aes(x = reorder(category, n), y = n, fill = category)) +
+geom_col() +
+coord_flip() +
+labs(
+title = "Order Count by Product Category",
+x = "Product Category",
+y = "Number of Orders"
+) +
+theme_minimal()
+
+```
+```{r}
+# 4.1 Class balance
+ecom_df %>% count(returned) %>% mutate(prop = n / sum(n))
+
+# 4.2 Visuals (run in RStudio / RMarkdown to display)
+# Returned by category
+ecom_df %>% 
+  group_by(category, returned) %>% 
+  summarise(n = n()) %>% 
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = category, y = prop, fill = returned)) +
+  geom_col(position = "dodge") +
+  labs(title = "Return rate by product category", y = "Proportion")
+
+# Returned by high_value_order
+ecom_df %>% count(high_value_order, returned) %>%
+  group_by(high_value_order) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = high_value_order, y = prop, fill = returned)) +
+  geom_col(position = "dodge") +
+  labs(title = "Return proportion by high value order flag", y = "Proportion")
+
+```
+Explanation: check class imbalance and simple visual relationships to guide modeling. 
+Looking for features strongly associated with returns (category, high-value orders, shipping time).
+
+The visualization shows the proportion of returned vs. non-returned orders across product categories. The bars indicate that:
+
+Most categories have a very low return rate (Only a small teal portion).
+
+Grocery products show almost zero returns, likely because these items are perishable or low-value.
+
+Fashion has one of the highest return rates, which aligns with real e-commerce behavior—customers often return clothing due to sizing, fit, or style issues.
+
+Electronics and Sports categories also show slightly higher return proportions compared to Beauty, Home, or Grocery.
+
+Overall, returns make up a very small fraction of total orders, indicating that the majority of transactions are successful.
+
+Return rate by customer age group:
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ecom_df %>%
+  mutate(age_group = cut(customer_age, 
+                         breaks = c(18, 30, 45, 60, 80),
+                         labels = c("18–30", "31–45", "46–60", "61+"))) %>%
+  group_by(age_group, returned) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(age_group) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = age_group, y = prop, fill = returned)) +
+  geom_col(position = "fill") +
+  labs(title = "Return Rate by Customer Age Group",
+       x = "Age Group",
+       y = "Proportion") +
+  scale_fill_brewer(palette = "Set2")
+
+```
+Average delivery time for returned vs non-returned items
+
+```{r}
+ecom_df %>%
+  group_by(returned) %>%
+  summarise(avg_delivery = mean(delivery_time_days, na.rm = TRUE)) %>%
+  ggplot(aes(x = returned, y = avg_delivery, fill = returned)) +
+  geom_col() +
+  labs(title = "Average Delivery Time by Return Status",
+       x = "Returned?",
+       y = "Average Delivery Time (days)")
+
+```
+Price vs Return Status
+
+```{r}
+ggplot(ecom_df, aes(x = returned, y = price, fill = returned)) +
+  geom_boxplot() +
+  labs(title = "Price Difference Between Returned and Non-Returned Orders",
+       x = "Returned",
+       y = "Price")
+
+```
+5. Train/test split and preprocessing recipe
+
+```{r}
+set.seed(1234)
+train_index <- createDataPartition(ecom_df$returned, p = 0.75, list = FALSE)
+train <- ecom_df[train_index, ]
+test  <- ecom_df[-train_index, ]
+
+# recipe: simple preprocessing for modeling
+rec <- recipe(returned ~ price + discount + quantity + delivery_time_days +
+                shipping_cost + profit_margin + customer_age + unit_price +
+                category + payment_method + region + order_month + order_wday +
+                high_value_order + age_group,
+              data = train) %>%
+  step_dummy(all_nominal_predictors(), -all_outcomes()) %>%  # one-hot encoding
+  step_zv(all_predictors()) %>%                             # remove zero variance
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors())
+rec_prep <- prep(rec, training = train)
+x_train <- bake(rec_prep, new_data = train)
+x_test  <- bake(rec_prep, new_data = test)
+
+```
+
+Explanation: split 75/25. 
+Use a recipe to one-hot encode categorical predictors and standardize numeric predictors; 
+prepares data to feed to models that require numeric input. 
+step_dummy() makes factors suitable for glm and xgboost
+
+6. Baseline model: Logistic Regression (optional quick baseline)
+
+```{r}
+set.seed(1234)
+glm_fit <- train(returned ~ ., data = x_train,
+                 method = "glm",
+                 family = "binomial",
+                 trControl = trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary),
+                 metric = "ROC")
+
+glm_fit
+glm_pred <- predict(glm_fit, newdata = x_test)
+glm_probs <- predict(glm_fit, newdata = x_test, type = "prob")[, "Yes"]
+
+confusionMatrix(glm_pred, x_test$returned, positive = "Yes")
+glm_roc <- roc(response = x_test$returned, predictor = glm_probs, levels = c("No","Yes"))
+auc(glm_roc)
+
+```
+Explanation: building logistic model as a baseline; report confusion matrix and AUC.
+
+7. Method 1 (Chapter 1–10): Decision Tree (rpart)
+
+```{r}
+# Train a decision tree with caret wrapper
+ctrl <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+set.seed(1234)
+rpart_grid <- expand.grid(cp = seq(0.001, 0.05, length.out = 8))
+
+rpart_fit <- train(returned ~ ., data = x_train,
+                   method = "rpart",
+                   trControl = ctrl,
+                   tuneGrid = rpart_grid,
+                   metric = "ROC")
+
+rpart_fit
+# plot the final tree
+rpart.plot(rpart_fit$finalModel, main = "Decision tree for returned")
+
+# Predictions and evaluation
+rpart_pred <- predict(rpart_fit, newdata = x_test)
+rpart_probs <- predict(rpart_fit, newdata = x_test, type = "prob")[, "Yes"]
+confusionMatrix(rpart_pred, x_test$returned, positive = "Yes")
+rpart_roc <- roc(response = x_test$returned, predictor = rpart_probs, levels = c("No","Yes"))
+auc(rpart_roc)
+
+```
+Explanation: training a CART decision tree (interpretable) with 5-fold CV tuning complexity parameter cp. 
+Evaluating with confusion matrix and ROC AUC. 
+Using rpart.plot to inspect splits
+
+8. Method 2 (Chapter 11–15): Gradient Boosting (xgboost via caret)
+
+```{r}
+# Convert data to matrix and label for xgboost
+# caret can handle xgboost; create tuning grid
+xgb_grid <- expand.grid(nrounds = c(100, 200),
+                        max_depth = c(3,6),
+                        eta = c(0.05, 0.1),
+                        gamma = 0,
+                        colsample_bytree = 0.8,
+                        min_child_weight = 1,
+                        subsample = 0.8)
+
+ctrl_xgb <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary, verboseIter = TRUE)
+
+set.seed(1234)
+xgb_fit <- train(returned ~ ., data = x_train,
+                 method = "xgbTree",
+                 trControl = ctrl_xgb,
+                 tuneGrid = xgb_grid,
+                 metric = "ROC",
+                 verbose = FALSE)
+
+xgb_fit
+# Variable importance
+vip(xgb_fit$finalModel)
+
+# Predictions & evaluation
+xgb_pred <- predict(xgb_fit, newdata = x_test)
+xgb_probs <- predict(xgb_fit, newdata = x_test, type = "prob")[, "Yes"]
+confusionMatrix(xgb_pred, x_test$returned, positive = "Yes")
+xgb_roc <- roc(response = x_test$returned, predictor = xgb_probs, levels = c("No","Yes"))
+auc(xgb_roc)
+
+```
+Explanation: training boosted trees with caret's xgbTree wrapper. 
+Tuning nrounds, max_depth, and eta. 
+Report AUC and confusion matrix. Use vip to show feature importance for interpretation.
+
+9. Model comparison & selection
+
+```{r}
+results <- resamples(list(Logistic = glm_fit, Tree = rpart_fit, XGBoost = xgb_fit))
+summary(results)
+
+# Compare test set ROC AUCs we computed
+tibble(
+  model = c("Logistic", "DecisionTree", "XGBoost"),
+  auc = c(auc(glm_roc), auc(rpart_roc), auc(xgb_roc))
+) %>% arrange(desc(auc))
+
+```
+
+Explanation: comparing cross-validated resampling results and hold-out AUC on the test set. 
+WE prefer the model with best hold-out AUC and acceptable confusion matrix tradeoffs.
+
+10. Interpret results & business actions
+
+```{r}
+# Example: create predictions on entire dataset to flag high-risk orders
+x_all <- bake(rec_prep, new_data = ecom_df)
+final_probs <- predict(xgb_fit, newdata = x_all, type = "prob")[, "Yes"]
+ecom_df$pred_return_prob <- final_probs
+ecom_df$pred_return_flag <- ifelse(final_probs > 0.5, "Yes", "No")
+
+```
+
+Explanation: using final model (e.g., xgboost) to score orders. 
+Flagging those with predicted return probability above threshold (0.5 here; 
+business can tune threshold to target specific precision/recall tradeoff).
+
+Conclusions — summary
 
