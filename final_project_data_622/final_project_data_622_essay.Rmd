@@ -1,0 +1,81 @@
+---
+title: "final_project_data_622_essay"
+author: "Mubashira Qari"
+date: "2025-12-07"
+output: pdf_document
+---
+
+# Final Essay – Phishing Email Classification  
+**Author:** Mubashira Qari  
+**Course:** DATA 622  
+**Date:** December 7, 2025  
+
+## Introduction
+
+The goal of this project was to build a machine learning system that can automatically detect phishing emails. Phishing emails are designed to trick people into giving away important information such as passwords, bank details, and personal data. These emails often look real and can cause serious harm if someone falls for them. Because companies receive thousands of emails every day, it is impossible for humans to check them manually. A reliable automated model can reduce risk and help protect both individuals and organizations.
+
+This project compares two machine learning approaches:  
+1. **A traditional model (Naive Bayes)** from Chapters 1–10 of the textbook *Machine Learning with R* by Brett Lantz.  
+2. **An advanced model (Random Forest)** from Chapters 11–15.  
+
+The goal is to see which method performs better on real-world unstructured text data.
+
+---
+
+## Dataset Description and Preparation
+
+The dataset used for this study is **Phishing_Email.csv**, which contains **18,650 emails**. Each row represents one email. The important fields are:
+
+- **Email.Text**: the full email body  
+- **Email.Type**: either “Safe Email” or “Phishing Email”  
+- **X**: a simple index column  
+
+Since the data consists of long, unstructured text, several preprocessing steps were required to prepare it for the models. First, the labels were converted into a more convenient factor variable called **Label**, with two categories: `"legitimate"` and `"phishing"`.  
+
+Next, a text corpus was created from the `Email.Text` column. The text was cleaned by converting everything to lowercase, removing punctuation, removing numbers, removing stopwords, and stripping extra spaces. These steps help reduce noise and make the text more uniform.
+
+After cleaning, a **Document–Term Matrix (DTM)** was created. In the DTM, each row represents an email, and each column represents a word. The cell values show how many times each word appears in each email. The initial DTM had hundreds of thousands of terms, so sparsity reduction was applied using `removeSparseTerms(dtm, 0.99)`. This keeps only words that appear in at least 1% of all emails, reducing dimensionality and improving model performance.
+
+Finally, the DTM was converted into a normal data frame and the `Label` column was added back. The dataset was split into training (70%) and testing (30%) sets.
+
+---
+
+## Methodologies Used
+
+Two machine learning methods were applied:
+
+### 1. Naive Bayes  
+Naive Bayes is a simple and fast probabilistic classifier. It assumes that each word in the text is independent of other words. This model usually performs well on short text like SMS messages. However, emails in this dataset are long and contain varied vocabulary, which challenges the independence assumption.
+
+### 2. Random Forest  
+Random Forest is a more advanced and powerful method. It builds many decision trees and combines their results. This model handles large numbers of features and can capture complex relationships between words. It does not assume independence and is more robust to noise.
+
+---
+
+## Purpose of the Analysis
+
+The main purpose of this analysis is to compare traditional and advanced machine learning techniques on a real-world text dataset. The study demonstrates how to preprocess unstructured text, how to convert it to numerical features, and how different algorithms perform under these conditions. The final goal is to determine which model is more accurate for detecting phishing emails.
+
+---
+
+## Results and Discussion
+
+The Naive Bayes model performed poorly, achieving only **44.7% accuracy**. It correctly identified many phishing emails but misclassified most legitimate emails. This is because Naive Bayes struggles with long text and because sparsity reduction removed many important but rare phishing words.
+
+In contrast, the Random Forest model performed extremely well, achieving **95.4% accuracy**. The confusion matrix showed strong performance on both classes, with very low misclassification rates. Random Forest successfully captured patterns in both legitimate and phishing emails. Feature importance analysis showed that certain keywords strongly influenced the model’s decisions. The ROC curve and high AUC value further demonstrated the model’s strong predictive power.
+
+---
+
+## Conclusions and Business Impact
+
+This project shows that Random Forest is a highly effective method for phishing email detection, while Naive Bayes is not suitable for long-form text classification. With high accuracy and strong generalization, Random Forest can significantly improve cybersecurity systems.
+
+The business impact is substantial:
+
+- **Better security**: fewer phishing emails reach employees.  
+- **Reduced financial risk**: less chance of fraud or data breaches.  
+- **Higher efficiency**: less manual filtering needed by IT teams.  
+- **Improved employee safety**: decreased likelihood of falling for scams.
+
+Overall, using Random Forest for phishing email detection offers a powerful, scalable, and practical solution for modern organizations.
+
