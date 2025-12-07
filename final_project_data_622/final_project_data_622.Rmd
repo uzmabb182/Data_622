@@ -5,3 +5,283 @@ date: "2025-12-07"
 output: html_document
 ---
 
+Dataset: Phishing_Email.csv
+
+Goal: classify emails as phishing vs legitimate using text
+
+Chapter 1–10 method: Naive Bayes (Chapter 4)
+
+Chapter 11–15 method: Random Forest (Chapter 12 – ensemble learning)
+
+
+STEP 1 – Install and load required packages
+
+```{r message=FALSE, warning=FALSE}
+#install.packages("tm")          # text mining
+#install.packages("e1071")       # Naive Bayes
+#install.packages("randomForest")# Random Forest
+#install.packages("ggplot2")     # simple plots (EDA)
+library(tm)
+library(e1071)
+library(randomForest)
+library(ggplot2)
+
+```
+
+Explanation:
+
+tm helps with cleaning and turning raw text into a document-term matrix.
+
+e1071 contains the naiveBayes() function.
+
+randomForest contains the randomForest() function.
+
+ggplot2 is for visualizations.
+
+STEP 2 – Load the dataset and inspect it
+
+```{r warning=FALSE}
+# Load Dataset
+
+url <- "https://raw.githubusercontent.com/uzmabb182/Data_622/refs/heads/main/final_project_data_622/Phishing_Email.csv"
+phishing_email_df <- read.csv(url, stringsAsFactors = FALSE)
+head(phishing_email_df)
+
+```
+
+
+
+```{r}
+# Look at structure and first few rows
+str(phishing_email_df)
+head(phishing_email_df)
+names(phishing_email_df)
+
+```
+
+Email.Text → the email body (unstructured text)
+
+Email.Type → the label: "Safe Email" or "Phishing Email"
+
+STEP 3 – Create a clean Label column for modeling
+
+Right now, your label is in Email.Type as text like "Safe Email" and "Phishing Email".
+turn that into a factor called Label with two values: "legitimate" and "phishing".
+
+3.1 – First, inspect the values in Email.Type
+
+```{r}
+table(phishing_email_df$Email.Type)
+
+```
+
+3.2 – Create the Label factor column
+
+```{r}
+phishing_email_df$Label <- factor(
+  phishing_email_df$Email.Type,
+  levels = c("Safe Email", "Phishing Email"),
+  labels = c("legitimate", "phishing")
+)
+
+# Check the new Label column
+table(phishing_email_df$Label)
+str(phishing_email_df$Label)
+
+```
+
+Explanation
+
+phishing_email_df$Email.Type = original labels ("Safe Email" / "Phishing Email").
+
+factor(..., levels = ..., labels = ...)
+
+levels = what is currently in the data.
+
+labels = how we want to rename them for modeling.
+
+We create a new column Label (we’re not overwriting Email.Type, we keep it as reference).
+
+STEP 4 – Create and inspect the text corpus
+
+We’ll now turn the Email.Text column (raw email content) into a corpus, which is just a collection of text documents used for text mining.
+
+4.1 – Create the corpus
+
+```{r}
+library(tm)  # make sure this is loaded
+
+corpus <- VCorpus(VectorSource(phishing_email_df$Email.Text))
+
+```
+
+Explanation
+
+VectorSource(phishing_email_df$Email.Text)
+This tells R: “treat each row of Email.Text as a separate document.”
+
+VCorpus(...)
+Creates a volatile corpus in memory, which tm can clean and transform.
+
+4.2 – Inspect a few emails from the corpus
+
+```{r}
+# Look at the first email
+corpus[[1]]$content
+
+# Look at, say, the 10th email
+corpus[[10]]$content
+
+```
+
+Explanation
+
+corpus[[1]]$content displays the raw text of the first email.
+
+This helps you see what the model will be working with before cleaning.
+
+STEP 5 – Clean the Text Corpus
+
+We apply a series of transformations to standardize the email text.
+
+5.1 – Convert everything to lowercase
+
+
+```{r}
+corpus_clean <- tm_map(corpus, content_transformer(tolower))
+
+```
+
+Explanation:
+Machine learning treats “Free”, “FREE”, and “free” as different words unless we normalize them. 
+Lowercasing avoids duplication.
+
+5.2 – Remove numbers
+
+```{r}
+corpus_clean <- tm_map(corpus_clean, removeNumbers)
+
+```
+
+Many numbers do not contribute to detecting phishing (unless you're doing more complex NLP).
+
+5.3 – Remove punctuation
+
+```{r}
+corpus_clean <- tm_map(corpus_clean, removePunctuation)
+
+```
+
+Punctuation does not carry useful meaning for most traditional ML models.
+
+5.4 – Remove common English stopwords
+
+```{r}
+corpus_clean <- tm_map(corpus_clean, removeWords, stopwords("en"))
+
+```
+
+Stopwords are very common words like:
+the, and, or, is, to, be, of, at
+They appear so often they do not help classification.
+
+5.5 – Remove extra whitespace
+
+```{r}
+corpus_clean <- tm_map(corpus_clean, stripWhitespace)
+
+```
+
+This cleans up spaces left behind after removing stopwords and punctuation.
+
+5.6 – Inspect cleaned text
+
+```{r}
+corpus_clean[[1]]$content
+
+```
+
+now we see a simplified version of the original email.
+
+STEP 6 — Create the Document-Term Matrix (DTM)
+
+This step converts your cleaned text into numbers (word counts), which allows machine learning models to use the data.
+
+6.1 – Build the DTM
+
+```{r}
+dtm <- DocumentTermMatrix(corpus_clean)
+dtm
+
+```
+
+Explanation
+
+Each row = one email
+
+Each column = one unique word
+
+Each cell = number of times the word appears in that email
+
+STEP 7 — Reduce sparsity (remove extremely rare words)
+
+Rare words clutter the model and slow everything down.
+We keep words that appear in at least 1% of emails.
+
+```{r}
+dtm_sparse <- removeSparseTerms(dtm, 0.99)
+dtm_sparse
+
+```
+
+Explanation
+
+0.99 keeps terms appearing in at least 1% of emails
+
+This usually reduces terms from 100,000+ to a few hundred or thousand
+
+STEP 8 — Convert the DTM to a Data Frame and Add Label
+
+8.1 — Convert DTM to a matrix and then to a data frame
+
+```{r}
+emails_words <- as.data.frame(as.matrix(dtm_sparse))
+str(emails_words)
+
+```
+Explanation
+
+The machine learning algorithms (Naive Bayes, Random Forest) require a standard R data frame, not a DocumentTermMatrix.
+
+This step turns your DTM into rows (emails) and columns (word counts).
+
+8.2 — Clean column names
+
+Some words contain characters that are invalid in R column names.
+
+```{r}
+emails_words <- setNames(emails_words, make.names(names(emails_words)))
+
+```
+
+Explanation
+
+make.names() turns names like "1-800" into something legal like X1.800.
+
+8.3 — Add the Label column
+
+```{r}
+emails_words$Label <- phishing_email_df$Label
+
+str(emails_words$Label)
+table(emails_words$Label)
+
+```
+Explanation
+
+We copy previously created Label factor (legitimate / phishing) over to the new data frame.
+
+Now each row contains:
+email word counts + the correct label
+
+This is the dataset we train models on.
