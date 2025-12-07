@@ -293,8 +293,8 @@ x_test  <- bake(rec_prep, new_data = test)
 ```
 
 Explanation: split 75/25. 
-Use a recipe to one-hot encode categorical predictors and standardize numeric predictors; 
-prepares data to feed to models that require numeric input. 
+Using a recipe to one-hot encode categorical predictors and standardize numeric predictors; 
+preparing data to feed to models that require numeric input. 
 step_dummy() makes factors suitable for glm and xgboost
 
 6. Baseline model: Logistic Regression (optional quick baseline)
@@ -316,7 +316,130 @@ glm_roc <- roc(response = x_test$returned, predictor = glm_probs, levels = c("No
 auc(glm_roc)
 
 ```
-Explanation: building logistic model as a baseline; report confusion matrix and AUC.
+Explanation: building logistic model as a baseline; 
+reporting confusion matrix and AUC.
+
+Interpretation of Baseline Logistic Regression Model
+1. Overall Model Performance
+
+Your logistic regression model was trained on 25,876 samples, with 44 predictors and a binary target variable (Yes = returned, No = not returned). The model used 5-fold cross-validation, which is a good practice for baseline performance estimation.
+
+The model produced an ROC = 0.5887, which indicates:
+
+The model is only slightly better than random guessing (AUC = 0.5).
+
+It struggles to separate returned vs. non-returned orders.
+
+This is expected when predicting rare events like product returns.
+
+AUC below 0.60 typically means the features may not have strong linear relationships with the target, or class imbalance is impacting performance.
+
+2. Class Imbalance and Prediction Behavior
+
+```{r}
+#Prediction   No   Yes
+#No          8149  475
+#Yes            0    0
+
+```
+
+This means:
+
+The model never predicted “Yes” (returned) for any observation.
+
+It predicted every case as “No” (not returned).
+
+This is a classic sign of severe class imbalance — the return rate in your dataset is around 5.5%, which is very low. Logistic regression, without rebalancing, tends to default to the majority class because it maximizes accuracy by ignoring rare outcomes.
+
+This explains why:
+
+Sensitivity (Recall for Yes) = 0.00
+
+Specificity (Recall for No) = 1.00
+
+Balanced Accuracy = 0.50
+
+Kappa = 0 (no better than random agreement)
+
+Even though the model shows a high accuracy = 94.49%, this number is misleading because simply predicting “No” for everyone gives the same accuracy.
+
+Conclusion: Logistic regression baseline has zero ability to detect returned items.
+
+3. No Information Rate (NIR) Insight
+
+```{r}
+# No Information Rate : 0.9449
+# P-Value [Acc > NIR] : 0.5122
+
+```
+
+NIR = accuracy of always predicting the majority class (“No”), which is 94.49%.
+
+Your model’s accuracy = exactly the same as NIR.
+
+P-value shows the model is not significantly better than the trivial baseline.
+
+This is further proof the model is not learning meaningful patterns in its current form.
+
+4. AUC (ROC = 0.6236): What It Means
+
+Even though the confusion matrix is poor, ROC = 0.6236 suggests:
+
+The model does rank returned items as slightly more “return-prone” than non-returned ones.
+
+But the default probability threshold (0.5) hides that information.
+
+With rare events, the threshold usually needs to be lowered (e.g., 0.1 or 0.2).
+
+This means the logistic model contains some predictive value — just not at the default decision threshold.
+
+5. Why Logistic Regression Failed
+
+Severe class imbalance (only 5% returned)
+
+Default probability threshold too high
+
+Linear model unable to capture complex relationships
+
+Some predictors may have low variance or minimal correlation with returns
+
+This makes logistic regression a weak baseline for this dataset.
+
+
+
+
+Fix Class Imbalance
+
+A. SMOTE (Best starting point)
+
+```{r}
+install.packages("ROSE")   # if not installed
+library(ROSE)
+
+set.seed(123)
+# Split first
+train_index <- createDataPartition(ecom_df$returned, p = 0.75, list = FALSE)
+train <- ecom_df[train_index, ]
+test  <- ecom_df[-train_index, ]
+
+# Use ovun.sample to create a balanced sample
+rose_out <- ovun.sample(returned ~ ., data = train, method = "both", p = 0.5, N = nrow(train), seed = 1)$data
+table(rose_out$returned)
+
+# Train model on rose_out
+ctrl <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+set.seed(123)
+xgb_rose <- train(returned ~ ., data = rose_out, method = "xgbTree", metric = "ROC", trControl = ctrl)
+xgb_rose
+
+# Evaluate
+probs_rose <- predict(xgb_rose, newdata = test, type = "prob")[, "Yes"]
+preds_rose <- predict(xgb_rose, newdata = test)
+confusionMatrix(preds_rose, test$returned, positive = "Yes")
+
+
+```
+
 
 7. Method 1 (Chapter 1–10): Decision Tree (rpart)
 
@@ -348,6 +471,9 @@ auc(rpart_roc)
 Explanation: training a CART decision tree (interpretable) with 5-fold CV tuning complexity parameter cp. 
 Evaluating with confusion matrix and ROC AUC. 
 Using rpart.plot to inspect splits
+
+Just like the logistic regression baseline, the decision tree never predicts the minority class (“Yes”) even once. 
+It predicts “No” for all observations.
 
 8. Method 2 (Chapter 11–15): Gradient Boosting (xgboost via caret)
 
